@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AW169 — Performance</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0e14; --surface: #13171f; --surface2: #1a1f2b; --border: #252c3b;
+    --accent: #e8a020; --accent2: #4ea8de; --danger: #e05252; --ok: #52c07a;
+    --text: #d4dbe8; --muted: #6b7a94; --white: #f0f4fa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; min-height: 100vh; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px; opacity: 0.25; pointer-events: none; z-index: 0;
+  }
+  .container { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 32px 20px 60px; }
+  header { display: flex; align-items: flex-end; gap: 20px; margin-bottom: 28px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+  .logo-block h1 { font-family: 'Bebas Neue', sans-serif; font-size: 52px; letter-spacing: 3px; color: var(--white); line-height: 1; }
+  .logo-block h1 span { color: var(--accent2); }
+  .logo-block p { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
+  .header-right { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .header-badge { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--accent2); border: 1px solid var(--accent2); padding: 4px 10px; border-radius: 2px; letter-spacing: 1px; }
+  .back-link { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); text-decoration: none; letter-spacing: 1px; transition: color 0.15s; }
+  .back-link:hover { color: var(--accent2); }
+
+  .tool-tabs { display: flex; gap: 0; margin-bottom: 24px; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+  .tool-tab { flex: 1; background: var(--surface); border: none; color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; padding: 13px 8px; cursor: pointer; transition: all 0.15s; border-right: 1px solid var(--border); text-align: center; line-height: 1.4; }
+  .tool-tab:last-child { border-right: none; }
+  .tool-tab.active { background: var(--accent2); color: #000; font-weight: 600; }
+  .tool-tab:hover:not(.active) { background: var(--surface2); color: var(--text); }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 24px; margin-bottom: 20px; }
+  .panel-title { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent2); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+  .field-group { display: flex; flex-direction: column; gap: 6px; }
+  .input-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  input[type="number"], select {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--white);
+    font-family: 'IBM Plex Mono', monospace; font-size: 16px; padding: 12px 14px;
+    border-radius: 3px; width: 100%; outline: none; transition: border-color 0.15s;
+    -moz-appearance: textfield;
+  }
+  input[type="number"]:focus, select:focus { border-color: var(--accent2); }
+  input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .input-unit { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 4px; }
+  .calc-btn { width: 100%; margin-top: 20px; padding: 16px; background: var(--accent2); border: none; border-radius: 3px; color: #000; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: background 0.15s, transform 0.1s; }
+  .calc-btn:hover { background: #6bbce8; transform: translateY(-1px); }
+
+  .results-panel { background: var(--surface2); border: 1px solid var(--accent2); border-radius: 4px; padding: 28px; margin-top: 20px; animation: fadeIn 0.2s ease; display: none; }
+  .results-panel.visible { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .result-title { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 2px; color: var(--accent2); margin-bottom: 20px; }
+  .result-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: 3px; padding: 14px; }
+  .result-card.highlight { border-color: var(--accent2); }
+  .rc-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .rc-value { font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 600; color: var(--white); line-height: 1; }
+  .rc-value.positive { color: var(--ok); }
+  .rc-value.negative { color: var(--danger); }
+  .rc-unit { font-size: 11px; color: var(--muted); margin-left: 2px; }
+  .notice { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); line-height: 1.6; padding: 10px 14px; background: var(--surface); border-left: 2px solid var(--accent2); border-radius: 0 3px 3px 0; margin-bottom: 10px; }
+  .disclaimer { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--accent); line-height: 1.6; padding: 10px 14px; background: rgba(232,160,32,0.06); border-left: 2px solid var(--accent); border-radius: 0 3px 3px 0; }
+  .disclaimer strong { font-weight: 600; }
+  .error-panel { background: rgba(224,82,82,0.08); border: 1px solid var(--danger); border-radius: 4px; padding: 16px 20px; margin-top: 20px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--danger); display: none; }
+  .error-panel.visible { display: block; }
+  .section { display: none; }
+  .section.visible { display: block; }
+  .chart-info { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 14px 18px; margin-bottom: 20px; }
+  .chart-info-title { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .chart-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chart-tag { font-family: 'IBM Plex Mono', monospace; font-size: 10px; padding: 3px 10px; border-radius: 2px; letter-spacing: 1px; background: rgba(78,168,222,0.1); color: var(--accent2); border: 1px solid rgba(78,168,222,0.25); }
+  .chart-tag.amber { background: rgba(232,160,32,0.1); color: var(--accent); border-color: rgba(232,160,32,0.25); }
+  @media (max-width: 600px) {
+    .input-grid { grid-template-columns: 1fr; }
+    .result-grid { grid-template-columns: 1fr 1fr; }
+    header { flex-wrap: wrap; }
+    .logo-block h1 { font-size: 38px; }
+    .tool-tab { font-size: 9px; padding: 10px 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo-block">
+      <h1>AW<span>169</span></h1>
+      <p>Performance Charts</p>
+    </div>
+    <div class="header-right">
+      <div class="header-badge">OEI · ENHANCED</div>
+      <a href="index.html" class="back-link">← Back</a>
+    </div>
+  </header>
+
+  <div class="tool-tabs">
+    <button class="tool-tab active" onclick="setTool('hover')" id="tab-hover">Hover OGE<br>OEI 2.5 min</button>
+  </div>
+
+  <!-- HOVER OGE -->
+  <div class="section visible" id="hover-section">
+    <div class="chart-info">
+      <div class="chart-info-title">Chart Reference</div>
+      <div class="chart-tags">
+        <span class="chart-tag">Hover OGE</span><span class="chart-tag">OEI 2.5 min</span>
+        <span class="chart-tag">Enhanced</span><span class="chart-tag">Plus-Mode</span>
+        <span class="chart-tag">Elec 100%</span><span class="chart-tag amber">Fig S5-27</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Input Parameters</div>
+      <div class="input-grid">
+        <div class="field-group"><label>Pressure Altitude</label><input type="number" id="h-alt" placeholder="0" min="-1000" max="15000" step="100"><div class="input-unit">feet</div></div>
+        <div class="field-group"><label>OAT</label><input type="number" id="h-oat" placeholder="15" min="-40" max="40" step="1"><div class="input-unit">°C</div></div>
+        <div class="field-group"><label>Headwind</label><input type="number" id="h-wind" placeholder="0" min="0" max="50" step="1"><div class="input-unit">knots (50% credited)</div></div>
+      </div>
+      <button class="calc-btn" onclick="calcHover()">Calculate Max Gross Weight</button>
+    </div>
+    <div class="error-panel" id="h-error"></div>
+    <div class="results-panel" id="h-results">
+      <div class="result-title">Max Gross Weight — Hover OGE</div>
+      <div class="result-grid">
+        <div class="result-card highlight"><div class="rc-label">Max Gross Weight</div><div class="rc-value" id="h-res-weight">—</div></div>
+        <div class="result-card"><div class="rc-label">Base (no wind)</div><div class="rc-value" id="h-res-base">—</div></div>
+        <div class="result-card"><div class="rc-label">Wind benefit</div><div class="rc-value" id="h-res-benefit">—</div></div>
+        <div class="result-card"><div class="rc-label">Wind credited</div><div class="rc-value" id="h-res-wind">—</div></div>
+      </div>
+      <div class="notice" id="h-notice"></div>
+      <div class="disclaimer">⚠ Data digitalisert ved interpolering fra RFM Fig S5-27. Påregn avvik på <strong>±50 kg</strong>. Verifiser mot originalt RFM-chart før operasjonell bruk.</div>
+    </div>
+  </div>
+</div>
+<script>
+// ── HOVER OGE DATA (Fig S5-27) ────────────────────────────────────
+// HOVER_LINES — digitized from Fig S5-27 via WebPlotDigitizer
+// Format: {oat, points: [[alt_ft, max_gw_kg], ...]}
+const HOVER_LINES = [
+  {oat:-40,points:[[0,4560],[1000,4540],[2000,4515],[3000,4488],[4000,4458],[5000,4305],[6000,4160],[7000,4010],[8000,3860],[9000,3710],[10000,3560],[11000,3410]]},
+  {oat:-30,points:[[0,4534],[1000,4510],[2000,4482],[3000,4455],[4000,4425],[5000,4277],[6000,4130],[7000,3980],[8000,3830],[9000,3680],[10000,3530],[11000,3380]]},
+  {oat:-20,points:[[0,4507],[1000,4478],[2000,4452],[3000,4421],[4000,4389],[5000,4254],[6000,4102],[7000,3951],[8000,3799],[9000,3647],[10000,3496],[11000,3344]]},
+  {oat:-10,points:[[0,4478],[1000,4449],[2000,4421],[3000,4389],[4000,4238],[5000,4077],[6000,3907],[7000,3755],[8000,3603],[9000,3450],[10000,3298],[11000,3146]]},
+  {oat:  0,points:[[0,4449],[1000,4418],[2000,4374],[3000,4207],[4000,4050],[5000,3902],[6000,3753],[7000,3601],[8000,3449],[9000,3297],[10000,3145],[11000,2993]]},
+  {oat: 10,points:[[0,4397],[1000,4329],[2000,4168],[3000,4006],[4000,3855],[5000,3709],[6000,3557],[7000,3404],[8000,3252],[9000,3100],[10000,2948],[11000,2796]]},
+  {oat: 20,points:[[0,4256],[1000,4104],[2000,3952],[3000,3801],[4000,3649],[5000,3497],[6000,3345],[7000,3193],[8000,3041],[9000,2889],[10000,2737],[11000,2585]]},
+  {oat: 30,points:[[0,4057],[1000,3910],[2000,3763],[3000,3616],[4000,3469],[5000,3322],[6000,3175],[7000,3028],[8000,2881],[9000,2734],[10000,2587],[11000,2440]]},
+  {oat: 40,points:[[0,3798],[1000,3657],[2000,3516],[3000,3376],[4000,3235],[5000,3094],[6000,2953],[7000,2812],[8000,2671],[9000,2530],[10000,2389],[11000,2249]]},
+];
+const WIND_TABLE = {
+  5: {3400:81,3600:86,3800:91,4000:95,4200:99,4400:104,4600:88},
+  10:{3400:203,3600:215,3800:227,4000:238,4200:250,4400:262,4600:251},
+  20:{3400:535,3600:567,3800:599,4000:630,4200:661,4400:692,4600:733},
+  50:{3400:1733,3600:1834,3800:1936,4000:2039,4200:2142,4400:2245,4600:2465},
+};
+const WIND_SPEEDS=[0,5,10,20,50], WIND_GW=[3400,3600,3800,4000,4200,4400,4600];
+
+// ── INTERPOLATION ─────────────────────────────────────────────────
+function lerp(x,x0,x1,y0,y1){if(x1===x0)return y0;return y0+(y1-y0)*(x-x0)/(x1-x0);}
+function valueAtAlt(line,alt){
+  const p=line.points;
+  if(alt<p[0][0]||alt>p[p.length-1][0])return null;
+  for(let i=0;i<p.length-1;i++)if(alt>=p[i][0]&&alt<=p[i+1][0])return lerp(alt,p[i][0],p[i+1][0],p[i][1],p[i+1][1]);
+  return null;
+}
+function interp2D(lines,alt,oat){
+  const oats=lines.map(l=>l.oat);
+  if(oat<Math.min(...oats)||oat>Math.max(...oats))return null;
+  let lo=null,hi=null;
+  for(let i=0;i<lines.length-1;i++)if(lines[i].oat<=oat&&lines[i+1].oat>=oat){lo=lines[i];hi=lines[i+1];break;}
+  if(!lo||!hi)return null;
+  const vLo=valueAtAlt(lo,alt),vHi=valueAtAlt(hi,alt);
+  if(vLo===null&&vHi===null)return null;
+  if(vLo===null)return vHi;
+  if(vHi===null)return vLo;
+  return lerp(oat,lo.oat,hi.oat,vLo,vHi);
+}
+function windBenefit(credited,baseGW){
+  if(credited<=0)return 0;
+  let wLo=0,wHi=0;
+  for(let i=0;i<WIND_SPEEDS.length-1;i++)if(WIND_SPEEDS[i]<=credited&&WIND_SPEEDS[i+1]>=credited){wLo=WIND_SPEEDS[i];wHi=WIND_SPEEDS[i+1];break;}
+  if(wHi===0){wLo=wHi=WIND_SPEEDS[WIND_SPEEDS.length-1];}
+  function bAtW(ws,gw){
+    if(ws===0)return 0;const row=WIND_TABLE[ws];if(!row)return 0;
+    const cols=WIND_GW.filter(c=>row[c]!==undefined);
+    if(gw<=cols[0])return row[cols[0]];if(gw>=cols[cols.length-1])return row[cols[cols.length-1]];
+    for(let i=0;i<cols.length-1;i++)if(gw>=cols[i]&&gw<=cols[i+1])return lerp(gw,cols[i],cols[i+1],row[cols[i]],row[cols[i+1]]);
+    return 0;
+  }
+  const bLo=bAtW(wLo,baseGW),bHi=bAtW(wHi,baseGW);
+  if(wLo===wHi)return bHi;
+  return lerp(credited,wLo,wHi,bLo,bHi);
+}
+
+// ── UI ────────────────────────────────────────────────────────────
+let currentTool='hover';
+function setTool(t){
+  currentTool=t;
+  ['hover'].forEach(id=>{
+    document.getElementById('tab-'+id).classList.toggle('active',id===t);
+    document.getElementById(id+'-section').classList.toggle('visible',id===t);
+  });
+}
+
+function calcHover(){
+  const alt=parseFloat(document.getElementById('h-alt').value);
+  const oat=parseFloat(document.getElementById('h-oat').value);
+  const wind=parseFloat(document.getElementById('h-wind').value)||0;
+  const err=document.getElementById('h-error'),res=document.getElementById('h-results');
+  err.classList.remove('visible');res.classList.remove('visible');
+  if(isNaN(alt)||isNaN(oat)){err.textContent='Please enter altitude and OAT.';err.classList.add('visible');return;}
+  if(alt<0||alt>11000){err.textContent=`Altitude ${alt} ft outside chart range (0–11000 ft).`;err.classList.add('visible');return;}
+  if(oat<-40||oat>40){err.textContent=`OAT ${oat}°C outside range (-40 to +40°C).`;err.classList.add('visible');return;}
+  const base=interp2D(HOVER_LINES,alt,oat);
+  if(base===null){err.textContent=`${alt} ft / ${oat}°C beyond chart limits. Hover OGE not achievable.`;err.classList.add('visible');return;}
+  const credited=wind*0.5,benefit=windBenefit(credited,base);
+  const total=Math.min(4850,Math.round(base+benefit));
+  document.getElementById('h-res-weight').innerHTML=`${total.toLocaleString('no-NO')}<span class="rc-unit">kg</span>`;
+  document.getElementById('h-res-base').innerHTML=`${Math.round(base).toLocaleString('no-NO')}<span class="rc-unit">kg</span>`;
+  document.getElementById('h-res-benefit').innerHTML=`+${Math.round(benefit).toLocaleString('no-NO')}<span class="rc-unit">kg</span>`;
+  document.getElementById('h-res-wind').innerHTML=`${credited}<span class="rc-unit">kt</span>`;
+  document.getElementById('h-notice').textContent=`Headwind ${wind} kt → 50% credited = ${credited} kt per RFM.${total===4850?' Capped at MTOW 4850 kg.':''}`;
+  res.classList.add('visible');
+}
+
+
+
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;
+  if(currentTool==='hover')calcHover();
+});
+</script>
+</body>
+</html>
