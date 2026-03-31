@@ -655,16 +655,21 @@ function renderGenderRows() {
 }
 
 function updateCargoMin() {
-  const n = +document.getElementById('ffp-pax').value || 0;
-  const bag = +document.getElementById('ffp-baggage').value || BAG_STD;
-  const totalBag = n * bag;
-  const minCargo = Math.ceil(totalBag / 10) * 10;
-  const slider = document.getElementById('ffp-cargo-kg');
-  slider.min = minCargo;
-  if (+slider.value < minCargo) slider.value = minCargo;
-  document.getElementById('ffp-cargo-val').textContent = slider.value + ' kg';
+  const n   = +document.getElementById('ffp-pax').value || 0;
+  const bag = document.getElementById('ffp-baggage').value === '' ? BAG_STD : +document.getElementById('ffp-baggage').value;
+  const totalBag   = n * bag;
+  const snappedBag = Math.min(250, Math.ceil(totalBag / 10) * 10);
+
+  const slider   = document.getElementById('ffp-cargo-kg');
+  const valLabel = document.getElementById('ffp-cargo-val');
   const minLabel = document.getElementById('ffp-cargo-min-label');
-  if (minLabel) minLabel.textContent = minCargo > 0 ? `${minCargo} kg (bagasje)` : '0';
+
+  // Slider always 0–250; auto-set value to total baggage weight
+  slider.min   = 0;
+  slider.max   = 250;
+  slider.value = snappedBag;
+  if (valLabel) valLabel.textContent = snappedBag + ' kg';
+  if (minLabel) minLabel.textContent = totalBag > 0 ? `${snappedBag} kg (bagasje)` : '0';
 }
 
 function onPaxTypeChange(i) {
@@ -864,7 +869,7 @@ function calculate() {
 
   if (currentMode === 'pax') {
     const fuel = +document.getElementById('pax-fuel').value;
-    const bag = +document.getElementById('pax-baggage').value || BAG_STD;
+    const bag = document.getElementById('pax-baggage').value === '' ? BAG_STD : +document.getElementById('pax-baggage').value;
     const r = calcPaxAtFuel(fuel, bag);
     const sc = r.usefulLoad >= 0 ? (r.maxPax > 0 ? 'ok' : 'warn') : 'danger';
     const badge = r.usefulLoad < 0 ? `<span class="status-badge badge-danger">OVERLOAD uten payload</span>` :
@@ -915,7 +920,7 @@ function calculate() {
 
   else if (currentMode === 'payload-for-range') {
     const nm = +document.getElementById('pfr-dist').value;
-    const bag = +document.getElementById('pfr-baggage').value || BAG_STD;
+    const bag = document.getElementById('pfr-baggage').value === '' ? BAG_STD : +document.getElementById('pfr-baggage').value;
     const r = calcPayloadForRange(nm, bag);
     const paxW = getPaxWeight();
 
@@ -968,7 +973,7 @@ function calculate() {
 
   else if (currentMode === 'fuel-for-pax') {
     const pax = +document.getElementById('ffp-pax').value || 0;
-    const bag = +document.getElementById('ffp-baggage').value || BAG_STD;
+    const bag = document.getElementById('ffp-baggage').value === '' ? BAG_STD : +document.getElementById('ffp-baggage').value;
     const r = calcMaxFuelForPax(pax, bag);
     const limitedByWeight = ac.maxRamp - ac.zfw - r.payloadWeight < MAX_FUEL;
     const suit = document.getElementById('suit').value === 'yes';
