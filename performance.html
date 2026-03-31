@@ -116,7 +116,7 @@
       <div class="input-grid">
         <div class="field-group"><label>Pressure Altitude</label><input type="number" id="h-alt" placeholder="0" min="-1000" max="15000" step="100"><div class="input-unit">feet</div></div>
         <div class="field-group"><label>OAT</label><input type="number" id="h-oat" placeholder="15" min="-40" max="40" step="1"><div class="input-unit">°C</div></div>
-        <div class="field-group"><label>Headwind</label><input type="number" id="h-wind" placeholder="0" min="0" max="50" step="1"><div class="input-unit">knots (50% credited)</div></div>
+        <div class="field-group"><label>Headwind</label><input type="number" id="h-wind" placeholder="0" min="0" max="50" step="1"><div class="input-unit">knots (100% wind, 50% benefit)</div></div>
       </div>
       <button class="calc-btn" onclick="calcHover()">Calculate Max Gross Weight</button>
     </div>
@@ -127,7 +127,7 @@
         <div class="result-card highlight"><div class="rc-label">Max Gross Weight</div><div class="rc-value" id="h-res-weight">—</div></div>
         <div class="result-card"><div class="rc-label">Base (no wind)</div><div class="rc-value" id="h-res-base">—</div></div>
         <div class="result-card"><div class="rc-label">Wind benefit</div><div class="rc-value" id="h-res-benefit">—</div></div>
-        <div class="result-card"><div class="rc-label">Wind credited</div><div class="rc-value" id="h-res-wind">—</div></div>
+        <div class="result-card"><div class="rc-label">Wind (actual)</div><div class="rc-value" id="h-res-wind">—</div></div>
       </div>
       <div class="notice" id="h-notice"></div>
       <div class="disclaimer">⚠ Data digitalisert ved interpolering fra RFM Fig S5-27. Påregn avvik på <strong>±50 kg</strong>. Verifiser mot originalt RFM-chart før operasjonell bruk.</div>
@@ -215,13 +215,14 @@ function calcHover(){
   if(oat<-40||oat>40){err.textContent=`OAT ${oat}°C outside range (-40 to +40°C).`;err.classList.add('visible');return;}
   const base=interp2D(HOVER_LINES,alt,oat);
   if(base===null){err.textContent=`${alt} ft / ${oat}°C beyond chart limits. Hover OGE not achievable.`;err.classList.add('visible');return;}
-  const credited=wind*0.5,benefit=windBenefit(credited,base);
+  const fullBenefit=windBenefit(wind,base);
+  const benefit=fullBenefit*0.5;
   const total=Math.min(4850,Math.round(base+benefit));
   document.getElementById('h-res-weight').innerHTML=`${total.toLocaleString('no-NO')}<span class="rc-unit">kg</span>`;
   document.getElementById('h-res-base').innerHTML=`${Math.round(base).toLocaleString('no-NO')}<span class="rc-unit">kg</span>`;
   document.getElementById('h-res-benefit').innerHTML=`+${Math.round(benefit).toLocaleString('no-NO')}<span class="rc-unit">kg</span>`;
-  document.getElementById('h-res-wind').innerHTML=`${credited}<span class="rc-unit">kt</span>`;
-  document.getElementById('h-notice').textContent=`Headwind ${wind} kt → 50% credited = ${credited} kt per RFM.${total===4850?' Capped at MTOW 4850 kg.':''}`;
+  document.getElementById('h-res-wind').innerHTML=`${wind}<span class="rc-unit">kt</span>`;
+  document.getElementById('h-notice').textContent=`Headwind ${wind} kt (100% wind, 50% weight benefit credited per RFM). Full benefit: +${Math.round(fullBenefit)} kg → credited: +${Math.round(benefit)} kg.${total===4850?' Capped at MTOW 4850 kg.':''}`;
   res.classList.add('visible');
 }
 
