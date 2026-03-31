@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="no">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AW169 — Payload & Range Calculator</title>
+<title>AW169 — Ops Tools</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -26,12 +26,16 @@
     background: var(--bg);
     color: var(--text);
     font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 14px;
     min-height: 100vh;
-    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    overflow: hidden;
   }
 
-  /* Subtle grid bg */
+  /* Grid background */
   body::before {
     content: '';
     position: fixed;
@@ -45,999 +49,273 @@
     z-index: 0;
   }
 
+  /* Subtle radial glow behind content */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 800px;
+    height: 500px;
+    background: radial-gradient(ellipse, rgba(232,160,32,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
   .container {
     position: relative;
     z-index: 1;
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 32px 20px 60px;
-  }
-
-  header {
-    display: flex;
-    align-items: flex-end;
-    gap: 20px;
-    margin-bottom: 36px;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 20px;
-  }
-
-  .logo-block h1 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 52px;
-    letter-spacing: 3px;
-    color: var(--white);
-    line-height: 1;
-  }
-
-  .logo-block h1 span { color: var(--accent); }
-
-  .logo-block p {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-top: 4px;
-  }
-
-  .header-badge {
-    margin-left: auto;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    color: var(--accent);
-    border: 1px solid var(--accent);
-    padding: 4px 10px;
-    border-radius: 2px;
-    letter-spacing: 1px;
-  }
-
-  /* Config row */
-  .config-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 24px;
-  }
-
-  .field-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  select, input[type="number"] {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--white);
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 13px;
-    padding: 10px 12px;
-    border-radius: 3px;
     width: 100%;
-    outline: none;
-    transition: border-color 0.15s;
-    -moz-appearance: textfield;
-  }
-
-  select:focus, input[type="number"]:focus {
-    border-color: var(--accent);
-  }
-
-  input[type="number"]::-webkit-outer-spin-button,
-  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
-
-  /* Mode tabs */
-  .mode-tabs {
-    display: flex;
-    gap: 0;
-    margin-bottom: 24px;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    overflow: hidden;
-  }
-
-  .mode-tab {
-    flex: 1;
-    background: var(--surface);
-    border: none;
-    color: var(--muted);
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    padding: 12px 8px;
-    cursor: pointer;
-    transition: all 0.15s;
-    border-right: 1px solid var(--border);
-    text-align: center;
-    line-height: 1.4;
-  }
-
-  .mode-tab:last-child { border-right: none; }
-
-  .mode-tab.active {
-    background: var(--accent);
-    color: #000;
-    font-weight: 600;
-  }
-
-  .mode-tab:hover:not(.active) {
-    background: var(--surface2);
-    color: var(--text);
-  }
-
-  /* Panels */
-  .panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 24px;
-    margin-bottom: 20px;
-  }
-
-  .panel-title {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--accent2);
-    margin-bottom: 16px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .input-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-  }
-
-  .input-grid.three { grid-template-columns: 1fr 1fr 1fr; }
-
-  /* Slider */
-  .slider-group {
+    max-width: 700px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-  }
-
-  .slider-label-row {
-    display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 0;
   }
 
-  .slider-val {
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 56px;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .header .eyebrow {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
     color: var(--accent);
+    margin-bottom: 12px;
   }
 
-  input[type="range"] {
-    width: 100%;
-    height: 4px;
-    -webkit-appearance: none;
-    background: var(--border);
-    border-radius: 2px;
-    outline: none;
-  }
-
-  input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--accent);
-    cursor: pointer;
-    border: 2px solid var(--bg);
-  }
-
-  .range-hints {
-    display: flex;
-    justify-content: space-between;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-  }
-
-  /* Results */
-  .results-panel {
-    background: var(--surface2);
-    border: 1px solid var(--accent);
-    border-radius: 4px;
-    padding: 24px;
-    margin-top: 20px;
-    animation: fadeIn 0.2s ease;
-  }
-
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-
-  .results-title {
+  .header h1 {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
-    letter-spacing: 2px;
-    color: var(--accent);
-    margin-bottom: 18px;
+    font-size: 88px;
+    letter-spacing: 6px;
+    color: var(--white);
+    line-height: 0.9;
   }
 
-  .result-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-    margin-bottom: 18px;
-  }
+  .header h1 span { color: var(--accent); }
 
-  .result-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    padding: 14px;
-  }
-
-  .result-card .rc-label {
+  .header .subtitle {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 1.5px;
+    font-size: 11px;
+    letter-spacing: 3px;
     text-transform: uppercase;
     color: var(--muted);
-    margin-bottom: 6px;
-  }
-
-  .result-card .rc-value {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 22px;
-    font-weight: 600;
-    color: var(--white);
-    line-height: 1;
-  }
-
-  .result-card .rc-unit {
-    font-size: 11px;
-    color: var(--muted);
-    margin-left: 3px;
-  }
-
-  .result-card.highlight { border-color: var(--accent); }
-  .result-card.highlight .rc-value { color: var(--accent); }
-  .result-card.ok .rc-value { color: var(--ok); }
-  .result-card.warn .rc-value { color: var(--accent); }
-  .result-card.danger .rc-value { color: var(--danger); }
-
-  /* Weight bar */
-  .weight-bar-wrap {
     margin-top: 16px;
   }
 
-  .weight-bar-label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 8px;
+  /* Divider line */
+  .divider {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin-bottom: 48px;
+    animation: fadeIn 0.8s ease 0.2s both;
   }
 
-  .weight-bar {
-    height: 28px;
-    background: var(--border);
-    border-radius: 3px;
-    overflow: hidden;
-    display: flex;
+  /* Tool cards */
+  .tools {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+  }
+
+  .tool-card {
     position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 32px 28px;
+    text-decoration: none;
+    color: inherit;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+    animation: fadeUp 0.5s ease both;
+    cursor: pointer;
+    display: block;
   }
 
-  .wb-seg {
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .tool-card:nth-child(1) { animation-delay: 0.3s; }
+  .tool-card:nth-child(2) { animation-delay: 0.45s; }
+
+  .tool-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .tool-card.amber::before {
+    background: linear-gradient(135deg, rgba(232,160,32,0.06) 0%, transparent 60%);
+  }
+
+  .tool-card.blue::before {
+    background: linear-gradient(135deg, rgba(78,168,222,0.06) 0%, transparent 60%);
+  }
+
+  .tool-card:hover {
+    transform: translateY(-3px);
+  }
+
+  .tool-card.amber:hover { border-color: var(--accent); }
+  .tool-card.blue:hover  { border-color: var(--accent2); }
+
+  .tool-card:hover::before { opacity: 1; }
+
+  /* Corner accent line */
+  .tool-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 0;
+    height: 3px;
+    transition: width 0.25s ease;
+    border-radius: 0;
+  }
+
+  .tool-card.amber::after { background: var(--accent); }
+  .tool-card.blue::after  { background: var(--accent2); }
+  .tool-card:hover::after { width: 100%; }
+
+  .card-tag {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 9px;
-    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 2px;
+  }
+
+  .amber .card-tag {
+    color: var(--accent);
+    background: rgba(232,160,32,0.1);
+    border: 1px solid rgba(232,160,32,0.25);
+  }
+
+  .blue .card-tag {
+    color: var(--accent2);
+    background: rgba(78,168,222,0.1);
+    border: 1px solid rgba(78,168,222,0.25);
+  }
+
+  .card-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    letter-spacing: 2px;
+    color: var(--white);
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+
+  .card-desc {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 28px;
+  }
+
+  .card-arrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
     letter-spacing: 1px;
-    transition: width 0.4s ease;
-    overflow: hidden;
-    white-space: nowrap;
-  }
-
-  .wb-bem { background: #2a3a5c; color: var(--accent2); }
-  .wb-crew { background: #1e3a2a; color: var(--ok); }
-  .wb-fuel { background: #3a2a10; color: var(--accent); }
-  .wb-payload { background: #3a1a1a; color: var(--danger); }
-  .wb-free { background: var(--surface); color: var(--muted); }
-
-  .wb-legend {
-    display: flex;
-    gap: 16px;
-    margin-top: 8px;
-    flex-wrap: wrap;
-  }
-
-  .wb-leg-item {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    transition: gap 0.2s;
+  }
+
+  .amber .card-arrow { color: var(--accent); }
+  .blue  .card-arrow { color: var(--accent2); }
+
+  .tool-card:hover .card-arrow { gap: 14px; }
+
+  .card-arrow::after {
+    content: '→';
+    font-size: 14px;
+  }
+
+  /* Footer */
+  .footer {
+    margin-top: 48px;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 10px;
+    letter-spacing: 2px;
     color: var(--muted);
+    text-align: center;
+    opacity: 0.5;
+    animation: fadeIn 1s ease 0.8s both;
   }
 
-  .wb-leg-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 2px;
-    flex-shrink: 0;
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
-  /* Fuel breakdown table */
-  .fuel-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 14px;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 12px;
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
-  .fuel-table tr { border-bottom: 1px solid var(--border); }
-  .fuel-table tr:last-child { border-bottom: none; }
-  .fuel-table td { padding: 7px 4px; }
-  .fuel-table td:last-child { text-align: right; color: var(--white); font-weight: 500; }
-  .fuel-table .total-row td { color: var(--accent); font-weight: 600; border-top: 1px solid var(--accent); }
-
-  .status-ok { color: var(--ok); }
-  .status-warn { color: var(--accent); }
-  .status-danger { color: var(--danger); }
-
-  .status-badge {
-    display: inline-block;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 1px;
-    padding: 3px 10px;
-    border-radius: 2px;
-    text-transform: uppercase;
-    margin-top: 14px;
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
 
-  .badge-ok { background: rgba(82,192,122,0.15); color: var(--ok); border: 1px solid var(--ok); }
-  .badge-warn { background: rgba(232,160,32,0.15); color: var(--accent); border: 1px solid var(--accent); }
-  .badge-danger { background: rgba(224,82,82,0.15); color: var(--danger); border: 1px solid var(--danger); }
-
-  .divider {
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 18px 0;
-  }
-
-  @media (max-width: 600px) {
-    .config-row { grid-template-columns: 1fr; }
-    .input-grid { grid-template-columns: 1fr; }
-    .input-grid.three { grid-template-columns: 1fr; }
-    .result-grid { grid-template-columns: 1fr 1fr; }
-    .mode-tab { font-size: 9px; padding: 10px 4px; }
-    header { flex-wrap: wrap; }
-    .logo-block h1 { font-size: 38px; }
+  @media (max-width: 540px) {
+    .header h1 { font-size: 64px; }
+    .tools { grid-template-columns: 1fr; }
+    .card-title { font-size: 30px; }
   }
 </style>
 </head>
 <body>
 <div class="container">
 
-  <header>
-    <div class="logo-block">
-      <h1>AW<span>169</span></h1>
-      <p>Payload &amp; Range Calculator</p>
-    </div>
-    <div class="header-badge">OPS TOOL</div>
-  </header>
-
-  <!-- Aircraft config -->
-  <div class="panel">
-    <div class="panel-title">Aircraft Configuration</div>
-    <div class="config-row">
-      <div class="field-group">
-        <label>Registrering</label>
-        <select id="reg" onchange="updateConfig()">
-          <option value="OXH_LOS">LN-OXH — Los</option>
-          <option value="OXH_CC">LN-OXH — Crew Change</option>
-          <option value="OXI_LOS">LN-OXI — Los</option>
-          <option value="OXI_CC">LN-OXI — Crew Change</option>
-          <option value="OXJ_LOS">LN-OXJ — Los</option>
-          <option value="OXJ_CC">LN-OXJ — Crew Change</option>
-          <option value="OXK_LOS">LN-OXK — Los</option>
-          <option value="OXK_CC">LN-OXK — Crew Change</option>
-        </select>
-      </div>
-      <div class="field-group">
-        <label>Drakt</label>
-        <select id="suit" onchange="renderGenderRows(); calculate()">
-          <option value="no">Uten drakt</option>
-          <option value="yes">Med drakt</option>
-        </select>
-      </div>
-      <div class="field-group" id="zfw-display-group">
-        <label>ZFW</label>
-        <input type="number" id="zfw-display" readonly style="opacity:0.7; cursor:default;">
-      </div>
-    </div>
-    <div id="config-info" style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); margin-top:8px;"></div>
+  <div class="header">
+    <h1>AW<span>169</span></h1>
+    <div class="subtitle">Flight Operations Tools</div>
   </div>
 
-  <!-- Mode tabs -->
-  <div class="mode-tabs">
-    <button class="mode-tab active" onclick="setMode('pax')" id="tab-pax">Pax ved<br>gitt fuel</button>
-    <button class="mode-tab" onclick="setMode('payload-for-range')" id="tab-payload-for-range">Payload for<br>gitt distanse</button>
-    <button class="mode-tab" onclick="setMode('fuel-for-pax')" id="tab-fuel-for-pax">Fuel for<br>gitt pax</button>
+  <div class="divider"></div>
+
+  <div class="tools">
+
+    <a href="aw169-prototyp-A.html" class="tool-card amber">
+      <div class="card-tag">Planning</div>
+      <div class="card-title">Range &amp;<br>Payload</div>
+      <div class="card-desc">Useful load, max passengers, fuel requirements and range calculations for all aircraft configurations.</div>
+      <div class="card-arrow">Open tool</div>
+    </a>
+
+    <a href="performance.html" class="tool-card blue">
+      <div class="card-tag">Performance</div>
+      <div class="card-title">Performance<br>Charts</div>
+      <div class="card-desc">Hover OGE performance data for mission planning.</div>
+      <div class="card-arrow">Open tool</div>
+    </a>
+
+    <a href="ferry.html" class="tool-card amber">
+      <div class="card-tag">Operations</div>
+      <div class="card-title">Ferry<br>Planning</div>
+      <div class="card-desc">Route optimisation, fuel calculations and timeline planning for ferry flights along the Norwegian coast.</div>
+      <div class="card-arrow">Open tool</div>
+    </a>
+
   </div>
 
-  <!-- MODE: PAX ved gitt fuel -->
-  <div id="mode-pax" class="panel">
-    <div class="panel-title">Maks passasjerer ved gitt fuelmengde</div>
-    <div class="input-grid">
-      <div class="slider-group">
-        <div class="slider-label-row">
-          <label>Fuel ramp</label>
-          <span class="slider-val" id="pax-fuel-val">500 kg</span>
-        </div>
-        <input type="range" id="pax-fuel" min="0" max="888" step="10" value="500" oninput="updateSliderLabel('pax-fuel','pax-fuel-val','kg'); calculate()">
-        <div class="range-hints"><span>0</span><span>888 kg max</span></div>
-      </div>
-      <div class="field-group">
-        <label>Bagasje per pax (kg)</label>
-        <input type="number" id="pax-baggage" value="14" min="0" max="50" oninput="calculate()">
-      </div>
-    </div>
-  </div>
-
-  <!-- MODE: PAYLOAD for gitt distanse -->
-  <div id="mode-payload-for-range" class="panel" style="display:none">
-    <div class="panel-title">Maks payload (pax + bagasje) for gitt distanse</div>
-    <div class="input-grid">
-      <div class="slider-group">
-        <div class="slider-label-row">
-          <label>Distanse (NM)</label>
-          <span class="slider-val" id="pfr-dist-val">100 NM</span>
-        </div>
-        <input type="range" id="pfr-dist" min="0" max="400" step="5" value="100" oninput="updateSliderLabel('pfr-dist','pfr-dist-val','NM'); calculate()">
-        <div class="range-hints"><span>0</span><span>400 NM</span></div>
-      </div>
-      <div class="field-group">
-        <label>Bagasje per pax (kg)</label>
-        <input type="number" id="pfr-baggage" value="14" min="0" max="50" oninput="calculate()">
-      </div>
-    </div>
-  </div>
-
-  <!-- MODE: FUEL for gitt pax -->
-  <div id="mode-fuel-for-pax" class="panel" style="display:none">
-    <div class="panel-title">Maks fuel for gitt pax-antall</div>
-    <div class="input-grid" style="grid-template-columns:1fr 1fr; margin-bottom:14px;">
-      <div class="slider-group">
-        <div class="slider-label-row">
-          <label>Antall pax</label>
-          <span class="slider-val" id="ffp-pax-val">0 pax</span>
-        </div>
-        <input type="range" id="ffp-pax" min="0" max="8" step="1" value="0" oninput="updateSliderLabel('ffp-pax','ffp-pax-val','pax'); renderGenderRows(); updateCargoMin(); calculate()">
-        <div class="range-hints"><span>0</span><span>8</span></div>
-      </div>
-      <div class="field-group">
-        <label>Bagasje per pax (kg)</label>
-        <input type="number" id="ffp-baggage" value="14" min="0" max="50" oninput="updateCargoMin(); calculate()">
-      </div>
-    </div>
-    <div id="ffp-gender-rows"></div>
-    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Cargo Compartment</div>
-      <div class="slider-group">
-        <div class="slider-label-row">
-          <label>Cargo vekt</label>
-          <span class="slider-val" id="ffp-cargo-val">0 kg</span>
-        </div>
-        <input type="range" id="ffp-cargo-kg" min="0" max="250" step="10" value="0" oninput="updateSliderLabel('ffp-cargo-kg','ffp-cargo-val','kg'); calculate()">
-        <div class="range-hints"><span id="ffp-cargo-min-label">0 (bagasje)</span><span>250 kg</span></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Results -->
-  <div id="results"></div>
+  <div class="footer">AW169 · LN-OXH · LN-OXI · LN-OXJ · LN-OXK</div>
 
 </div>
-
-<script>
-// ── Constants ──────────────────────────────────────────────────────────────
-const FUEL_FLOW = 300;       // kg/h
-const CRUISE_SPEED = 125;    // knots
-const FINAL_RESERVE = 130;   // kg
-const MAX_FUEL = 888;        // kg
-const CREW_WEIGHT = 170;     // kg (included in ZFW already)
-const BAG_STD = 14;          // kg per pax
-
-// EASA standard weights, helicopter ≤10 seats
-// Male: 88kg, Female: 70kg (without suit); +5kg with suit
-const PAX_MALE_NO_SUIT = 88;
-const PAX_FEMALE_NO_SUIT = 70;
-const PAX_MALE_SUIT = 93;
-const PAX_FEMALE_SUIT = 75;
-// Default (used in pax-at-fuel and payload-for-range): always male
-const PAX_WEIGHT_NO_SUIT = PAX_MALE_NO_SUIT;
-const PAX_WEIGHT_SUIT = PAX_MALE_SUIT;
-
-// Aircraft data: [reg_config] -> {zfw, maxRamp}
-const AC = {
-  OXH_LOS: { reg: 'LN-OXH', config: 'Los',         zfw: 3596, maxRamp: 4850 },
-  OXH_CC:  { reg: 'LN-OXH', config: 'Crew Change',  zfw: 3582, maxRamp: 4850 },
-  OXI_LOS: { reg: 'LN-OXI', config: 'Los',          zfw: 3596, maxRamp: 4650 },
-  OXI_CC:  { reg: 'LN-OXI', config: 'Crew Change',  zfw: 3593, maxRamp: 4650 },
-  OXJ_LOS: { reg: 'LN-OXJ', config: 'Los',          zfw: 3587, maxRamp: 4850 },
-  OXJ_CC:  { reg: 'LN-OXJ', config: 'Crew Change',  zfw: 3604, maxRamp: 4850 },
-  OXK_LOS: { reg: 'LN-OXK', config: 'Los',          zfw: 3651.5, maxRamp: 4850 },
-  OXK_CC:  { reg: 'LN-OXK', config: 'Crew Change',  zfw: 3637.5, maxRamp: 4850 },
-};
-
-let currentMode = 'pax';
-
-function getAC() {
-  return AC[document.getElementById('reg').value];
-}
-
-function getPaxWeight() {
-  return document.getElementById('suit').value === 'yes' ? PAX_WEIGHT_SUIT : PAX_WEIGHT_NO_SUIT;
-}
-
-function updateConfig() {
-  const ac = getAC();
-  document.getElementById('zfw-display').value = ac.zfw;
-  document.getElementById('config-info').textContent =
-    `Max Ramp Weight: ${ac.maxRamp} kg  |  ZFW: ${ac.zfw} kg  |  Max fuel: ${MAX_FUEL} kg`;
-  calculate();
-}
-
-function setMode(mode) {
-  currentMode = mode;
-  ['pax','payload-for-range','fuel-for-pax'].forEach(m => {
-    document.getElementById('mode-'+m).style.display = m === mode ? '' : 'none';
-    document.getElementById('tab-'+m).classList.toggle('active', m === mode);
-  });
-  renderGenderRows();
-  calculate();
-}
-
-function renderGenderRows() {
-  const n = +document.getElementById('ffp-pax').value || 0;
-  const suit = document.getElementById('suit').value === 'yes';
-  const container = document.getElementById('ffp-gender-rows');
-  if (n === 0) { container.innerHTML = ''; return; }
-
-  // Preserve existing selections before re-render
-  const prevSelections = {};
-  const prevCustom = {};
-  for (let i = 1; i <= n; i++) {
-    const sel = document.getElementById(`ffp-gender-${i}`);
-    const cust = document.getElementById(`ffp-custom-${i}`);
-    if (sel) prevSelections[i] = sel.value;
-    if (cust) prevCustom[i] = cust.value;
-  }
-
-  const mW = suit ? PAX_MALE_SUIT : PAX_MALE_NO_SUIT;
-  const fW = suit ? PAX_FEMALE_SUIT : PAX_FEMALE_NO_SUIT;
-
-  let html = `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Vekt per passasjer</div>`;
-  html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:8px;">`;
-  for (let i = 1; i <= n; i++) {
-    const prevVal = prevSelections[i] || 'M';
-    const prevCW = prevCustom[i] || '';
-    const showCustom = prevVal === 'C';
-    html += `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:10px 12px;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:6px;">PAX ${i}</div>
-      <select id="ffp-gender-${i}" onchange="onPaxTypeChange(${i})" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:6px 8px;border-radius:3px;outline:none;margin-bottom:${showCustom ? '6px' : '0'};">
-        <option value="M" ${prevVal==='M'?'selected':''}>♂ Male — ${mW} kg</option>
-        <option value="F" ${prevVal==='F'?'selected':''}>♀ Female — ${fW} kg</option>
-        <option value="C" ${prevVal==='C'?'selected':''}>✎ Custom</option>
-      </select>
-      <input type="number" id="ffp-custom-${i}" placeholder="kg" min="30" max="250" value="${prevCW}"
-        oninput="calculate()"
-        style="display:${showCustom?'block':'none'};width:100%;background:var(--surface);border:1px solid var(--accent);color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:13px;padding:6px 8px;border-radius:3px;outline:none;-moz-appearance:textfield;">
-    </div>`;
-  }
-  html += `</div>`;
-  container.innerHTML = html;
-}
-
-function updateCargoMin() {
-  const n   = +document.getElementById('ffp-pax').value || 0;
-  const bag = document.getElementById('ffp-baggage').value === '' ? BAG_STD : +document.getElementById('ffp-baggage').value;
-  const totalBag   = n * bag;
-  const snappedBag = Math.min(250, Math.ceil(totalBag / 10) * 10);
-
-  const slider   = document.getElementById('ffp-cargo-kg');
-  const valLabel = document.getElementById('ffp-cargo-val');
-  const minLabel = document.getElementById('ffp-cargo-min-label');
-
-  // Slider always 0–250; auto-set value to total baggage weight
-  slider.min   = 0;
-  slider.max   = 250;
-  slider.value = snappedBag;
-  if (valLabel) valLabel.textContent = snappedBag + ' kg';
-  if (minLabel) minLabel.textContent = totalBag > 0 ? `${snappedBag} kg (bagasje)` : '0';
-}
-
-function onPaxTypeChange(i) {
-  const sel = document.getElementById(`ffp-gender-${i}`);
-  const custInput = document.getElementById(`ffp-custom-${i}`);
-  if (sel.value === 'C') {
-    custInput.style.display = 'block';
-    sel.style.marginBottom = '6px';
-    custInput.focus();
-  } else {
-    custInput.style.display = 'none';
-    sel.style.marginBottom = '0';
-  }
-  calculate();
-}
-
-function getGenderPayload(numPax, bagPerPax) {
-  const suit = document.getElementById('suit').value === 'yes';
-  let total = 0;
-  let maleCount = 0, femaleCount = 0, customCount = 0;
-  for (let i = 1; i <= numPax; i++) {
-    const el = document.getElementById(`ffp-gender-${i}`);
-    const val = el ? el.value : 'M';
-    if (val === 'F') {
-      total += (suit ? PAX_FEMALE_SUIT : PAX_FEMALE_NO_SUIT) + bagPerPax;
-      femaleCount++;
-    } else if (val === 'C') {
-      const custEl = document.getElementById(`ffp-custom-${i}`);
-      const custW = custEl && custEl.value ? +custEl.value : (suit ? PAX_MALE_SUIT : PAX_MALE_NO_SUIT);
-      total += custW + bagPerPax;
-      customCount++;
-    } else {
-      total += (suit ? PAX_MALE_SUIT : PAX_MALE_NO_SUIT) + bagPerPax;
-      maleCount++;
-    }
-  }
-  return { total, maleCount, femaleCount, customCount };
-}
-
-function updateSliderLabel(sliderId, labelId, unit) {
-  const v = document.getElementById(sliderId).value;
-  document.getElementById(labelId).textContent = v + ' ' + unit;
-}
-
-// ── Core physics ────────────────────────────────────────────────────────────
-function fuelToRange(tripFuel) {
-  // tripFuel = fuel available for trip (excl reserves)
-  const timeH = tripFuel / FUEL_FLOW;
-  const nm = timeH * CRUISE_SPEED;
-  return { nm, timeH };
-}
-
-function rangeToTripFuel(nm) {
-  const timeH = nm / CRUISE_SPEED;
-  return timeH * FUEL_FLOW;
-}
-
-function contingency(tripFuel) {
-  return tripFuel * 0.10;
-}
-
-function totalFuelForTrip(nm) {
-  // Total ramp = trip + cont(trip) + final reserve
-  const trip = rangeToTripFuel(nm);
-  const cont = contingency(trip);
-  return { trip, cont, final: FINAL_RESERVE, total: trip + cont + FINAL_RESERVE };
-}
-
-function tripFuelFromRampFuel(rampFuel) {
-  // rampFuel = trip + 0.1*trip + 130
-  // rampFuel - 130 = 1.1 * trip
-  const usable = rampFuel - FINAL_RESERVE;
-  if (usable <= 0) return { trip: 0, cont: 0, usable: 0 };
-  const trip = usable / 1.1;
-  const cont = contingency(trip);
-  return { trip, cont, final: FINAL_RESERVE, usable };
-}
-
-// ── Calculations ────────────────────────────────────────────────────────────
-function calcPaxAtFuel(rampFuel, bagPerPax) {
-  const ac = getAC();
-  const paxW = getPaxWeight();
-
-  const usefulLoad = ac.maxRamp - ac.zfw - rampFuel;
-  const paxTotalW = paxW + bagPerPax;
-  const maxPax = Math.max(0, Math.floor(usefulLoad / paxTotalW));
-  const payloadUsed = maxPax * paxTotalW;
-  const rampWeight = ac.zfw + rampFuel + payloadUsed;
-
-  const fuel = tripFuelFromRampFuel(rampFuel);
-  const range = fuelToRange(fuel.trip);
-
-  return { usefulLoad, maxPax, payloadUsed, rampWeight, fuel, range, paxW, bagPerPax };
-}
-
-function calcRangeAtFuel(rampFuel, numPax, bagPerPax) {
-  const ac = getAC();
-  const paxW = getPaxWeight();
-  const payloadWeight = numPax * (paxW + bagPerPax);
-  const rampWeight = ac.zfw + rampFuel + payloadWeight;
-  const overload = rampWeight - ac.maxRamp;
-
-  const fuel = tripFuelFromRampFuel(rampFuel);
-  const range = fuelToRange(fuel.trip);
-
-  return { rampWeight, payloadWeight, fuel, range, overload };
-}
-
-function calcPayloadForRange(nm, bagPerPax) {
-  const ac = getAC();
-  const paxW = getPaxWeight();
-
-  const f = totalFuelForTrip(nm);
-  const fuelCapped = Math.min(f.total, MAX_FUEL);
-  const fuelOverMax = f.total > MAX_FUEL;
-
-  // Max payload given fuel requirement and weight limit
-  const maxPayloadByWeight = ac.maxRamp - ac.zfw - f.total;
-  const maxPayloadCapped = Math.max(0, maxPayloadByWeight);
-  const paxTotalW = paxW + bagPerPax;
-  const maxPax = fuelOverMax ? 0 : Math.floor(maxPayloadCapped / paxTotalW);
-  const payloadUsed = maxPax * paxTotalW;
-  const rampWeight = ac.zfw + f.total + payloadUsed;
-
-  // Remaining range after using required fuel (=0 since fuel is exactly for nm)
-  // But show the trip range for given fuel
-  const tripRange = fuelToRange(f.trip);
-
-  return { f, fuelCapped, fuelOverMax, maxPax, payloadUsed, rampWeight, paxTotalW, tripRange, nm };
-}
-
-function calcMaxFuelForPax(numPax, bagPerPax) {
-  const ac = getAC();
-  const gp = getGenderPayload(numPax, bagPerPax);
-  const cargoKg = Math.min(250, Math.max(0, parseFloat(document.getElementById('ffp-cargo-kg').value) || 0));
-  const payloadWeight = gp.total + cargoKg;
-  const maxFuelByWeight = ac.maxRamp - ac.zfw - payloadWeight;
-  const maxFuel = Math.min(MAX_FUEL, Math.max(0, maxFuelByWeight));
-
-  const fuel = tripFuelFromRampFuel(maxFuel);
-  const range = fuelToRange(fuel.trip);
-  const rampWeight = ac.zfw + payloadWeight + maxFuel;
-
-  return { maxFuel, payloadWeight, fuel, range, rampWeight, maleCount: gp.maleCount, femaleCount: gp.femaleCount, customCount: gp.customCount, cargoKg };
-}
-
-// ── Rendering ────────────────────────────────────────────────────────────────
-function renderWeightBar(segments, maxRamp) {
-  const total = segments.reduce((a,s) => a + s.val, 0);
-  const free = Math.max(0, maxRamp - total);
-  const allSegs = [...segments, { label: 'Margin', val: free, cls: 'wb-free' }];
-  const allTotal = total + free;
-
-  const bars = allSegs.map(s => {
-    const pct = (s.val / allTotal * 100).toFixed(1);
-    return `<div class="wb-seg ${s.cls}" style="width:${pct}%">${pct > 8 ? s.label : ''}</div>`;
-  }).join('');
-
-  const legend = segments.map(s =>
-    `<div class="wb-leg-item"><div class="wb-leg-dot" style="background:${s.color}"></div>${s.label}: ${Math.round(s.val)} kg</div>`
-  ).join('') + `<div class="wb-leg-item"><div class="wb-leg-dot" style="background:var(--surface)"></div>Margin: ${Math.round(free)} kg</div>`;
-
-  return `
-    <div class="weight-bar-wrap">
-      <div class="weight-bar-label">Vektfordeling (max ramp: ${maxRamp} kg)</div>
-      <div class="weight-bar">${bars}</div>
-      <div class="wb-legend">${legend}</div>
-    </div>`;
-}
-
-function fuelBreakdown(fuel) {
-  return `
-    <table class="fuel-table">
-      <tr><td>Trip fuel</td><td>${Math.round(fuel.trip)} kg</td></tr>
-      <tr><td>Contingency (10%)</td><td>${Math.round(fuel.cont)} kg</td></tr>
-      <tr><td>Final reserve</td><td>${FINAL_RESERVE} kg</td></tr>
-      <tr class="total-row"><td>Total ramp fuel</td><td>${Math.round(fuel.trip + fuel.cont + FINAL_RESERVE)} kg</td></tr>
-    </table>`;
-}
-
-function fmt(n, dec=0) { return (+n).toFixed(dec); }
-function fmtTime(h) {
-  const hh = Math.floor(h);
-  const mm = Math.round((h - hh) * 60);
-  return `${hh}h ${mm.toString().padStart(2,'0')}m`;
-}
-
-function statusClass(overload) {
-  if (overload <= 0) return 'ok';
-  if (overload <= 50) return 'warn';
-  return 'danger';
-}
-
-function calculate() {
-  const ac = getAC();
-  let html = '';
-
-  if (currentMode === 'pax') {
-    const fuel = +document.getElementById('pax-fuel').value;
-    const bag = document.getElementById('pax-baggage').value === '' ? BAG_STD : +document.getElementById('pax-baggage').value;
-    const r = calcPaxAtFuel(fuel, bag);
-    const sc = r.usefulLoad >= 0 ? (r.maxPax > 0 ? 'ok' : 'warn') : 'danger';
-    const badge = r.usefulLoad < 0 ? `<span class="status-badge badge-danger">OVERLOAD uten payload</span>` :
-                  r.maxPax === 0 ? `<span class="status-badge badge-warn">Ingen rom til pax</span>` :
-                  `<span class="status-badge badge-ok">OK</span>`;
-
-    html = `<div class="results-panel">
-      <div class="results-title">Resultat</div>
-      <div class="result-grid">
-        <div class="result-card highlight">
-          <div class="rc-label">Maks passasjerer</div>
-          <div class="rc-value ${sc}">${r.maxPax}<span class="rc-unit">pax</span></div>
-        </div>
-        <div class="result-card">
-          <div class="rc-label">Useful load</div>
-          <div class="rc-value ${r.usefulLoad < 0 ? 'danger' : ''}">${fmt(r.usefulLoad)}<span class="rc-unit">kg</span></div>
-        </div>
-        <div class="result-card">
-          <div class="rc-label">Payload (pax+bag)</div>
-          <div class="rc-value">${fmt(r.payloadUsed)}<span class="rc-unit">kg</span></div>
-        </div>
-        <div class="result-card">
-          <div class="rc-label">Trip fuel</div>
-          <div class="rc-value">${fmt(r.fuel.trip)}<span class="rc-unit">kg</span></div>
-        </div>
-        <div class="result-card highlight">
-          <div class="rc-label">Rekkevidde</div>
-          <div class="rc-value">${fmt(r.range.nm)}<span class="rc-unit">NM</span></div>
-        </div>
-        <div class="result-card highlight">
-          <div class="rc-label">Flygetid</div>
-          <div class="rc-value">${fmtTime(r.range.timeH)}</div>
-        </div>
-      </div>
-      ${badge}
-      <hr class="divider">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent2);margin-bottom:4px;padding:4px 8px;background:rgba(78,168,222,0.08);border-radius:2px;display:inline-block;">
-        ♂ EASA male std · ${r.paxW} kg/pax · bagasje ${r.bagPerPax} kg · totalt ${r.paxW + r.bagPerPax} kg/pax
-      </div>
-      ${fuelBreakdown(r.fuel)}
-      ${renderWeightBar([
-        {label:'BEM+Crew', val: ac.zfw, cls:'wb-bem', color:'#2a3a5c'},
-        {label:'Fuel', val: fuel, cls:'wb-fuel', color:'#3a2a10'},
-        {label:'Payload', val: r.payloadUsed, cls:'wb-payload', color:'#3a1a1a'},
-      ], ac.maxRamp)}
-    </div>`;
-  }
-
-  else if (currentMode === 'payload-for-range') {
-    const nm = +document.getElementById('pfr-dist').value;
-    const bag = document.getElementById('pfr-baggage').value === '' ? BAG_STD : +document.getElementById('pfr-baggage').value;
-    const r = calcPayloadForRange(nm, bag);
-    const paxW = getPaxWeight();
-
-    const badges = [];
-    if (r.fuelOverMax) badges.push(`<span class="status-badge badge-danger">Distansen krever mer fuel enn tanken (${fmt(r.f.total)} kg)</span>`);
-    else if (r.maxPax === 0) badges.push(`<span class="status-badge badge-warn">Ingen kapasitet til pax på denne distansen</span>`);
-    else badges.push(`<span class="status-badge badge-ok">OK — ${r.maxPax} pax mulig</span>`);
-
-    html = `<div class="results-panel">
-      <div class="results-title">Resultat</div>
-      <div class="result-grid">
-        <div class="result-card highlight">
-          <div class="rc-label">Maks passasjerer</div>
-          <div class="rc-value ${r.fuelOverMax ? 'danger' : r.maxPax === 0 ? 'warn' : 'ok'}">${r.maxPax}<span class="rc-unit">pax</span></div>
-        </div>
-        <div class="result-card">
-          <div class="rc-label">Payload (pax+bag)</div>
-          <div class="rc-value">${fmt(r.payloadUsed)}<span class="rc-unit">kg</span></div>
-        </div>
-        <div class="result-card">
-          <div class="rc-label">Nødvendig ramp fuel</div>
-          <div class="rc-value ${r.fuelOverMax ? 'danger' : ''}">${fmt(r.f.total)}<span class="rc-unit">kg</span></div>
-        </div>
-        <div class="result-card highlight">
-          <div class="rc-label">Distanse (trip)</div>
-          <div class="rc-value">${fmt(r.tripRange.nm)}<span class="rc-unit">NM</span></div>
-        </div>
-        <div class="result-card highlight">
-          <div class="rc-label">Flygetid (trip)</div>
-          <div class="rc-value">${fmtTime(r.tripRange.timeH)}</div>
-        </div>
-        <div class="result-card">
-          <div class="rc-label">Ramp weight</div>
-          <div class="rc-value">${fmt(r.rampWeight)}<span class="rc-unit">kg</span></div>
-        </div>
-      </div>
-      ${badges.join(' ')}
-      <hr class="divider">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent2);margin-bottom:4px;padding:4px 8px;background:rgba(78,168,222,0.08);border-radius:2px;display:inline-block;">
-        ♂ EASA male std · ${paxW} kg/pax · bagasje ${bag} kg · totalt ${paxW + bag} kg/pax
-      </div>
-      ${fuelBreakdown(r.f)}
-      ${renderWeightBar([
-        {label:'BEM+Crew', val: ac.zfw, cls:'wb-bem', color:'#2a3a5c'},
-        {label:'Fuel', val: Math.min(r.f.total, MAX_FUEL), cls:'wb-fuel', color:'#3a2a10'},
-        {label:'Payload', val: r.payloadUsed, cls:'wb-payload', color:'#3a1a1a'},
-      ], ac.maxRamp)}
-    </div>`;
-  }
-
-  else if (currentMode === 'fuel-for-pax') {
-    const pax = +document.getElementById('ffp-pax').value || 0;
-    const bag = document.getElementById('ffp-baggage').value === '' ? BAG_STD : +document.getElementById('ffp-baggage').value;
-    const r = calcMaxFuelForPax(pax, bag);
-    const limitedByWeight = ac.maxRamp - ac.zfw - r.payloadWeight < MAX_FUEL;
-    const suit = document.getElementById('suit').value === 'yes';
-    const mW = suit ? PAX_MALE_SUIT : PAX_MALE_NO_SUIT;
-    const fW = suit ? PAX_FEMALE_SUIT : PAX_FEMALE_NO_SUIT;
-    const genderParts = [];
-    if (r.maleCount > 0) genderParts.push(`♂ ${r.maleCount} male (${mW} kg)`);
-    if (r.femaleCount > 0) genderParts.push(`♀ ${r.femaleCount} female (${fW} kg)`);
-    if (r.customCount > 0) genderParts.push(`✎ ${r.customCount} custom`);
-    const genderSummary = pax > 0
-      ? genderParts.join(' · ') + ` · bagasje ${bag} kg/pax`
-      : 'Ingen passasjerer valgt';
-
-    html = `<div class="results-panel">
-      <div class="results-title">Resultat</div>
-      <div class="result-grid">
-        <div class="result-card highlight">
-          <div class="rc-label">Maks ramp fuel</div>
-          <div class="rc-value">${fmt(r.maxFuel)}<span class="rc-unit">kg</span></div>
-        </div>
-        <div class="result-card highlight">
-          <div class="rc-label">Maks rekkevidde</div>
-          <div class="rc-value">${fmt(r.range.nm)}<span class="rc-unit">NM</span></div>
-        </div>
-        <div class="result-card highlight">
-          <div class="rc-label">Maks flygetid</div>
-          <div class="rc-value">${fmtTime(r.range.timeH)}</div>
-        </div>
-        <div class="result-card">
-          <div class="rc-label">Payload</div>
-          <div class="rc-value">${fmt(r.payloadWeight)}<span class="rc-unit">kg</span></div>
-        </div>
-        <div class="result-card">
-          <div class="rc-label">Ramp weight</div>
-          <div class="rc-value">${fmt(r.rampWeight)}<span class="rc-unit">kg</span></div>
-        </div>
-        <div class="result-card">
-          <div class="rc-label">Fuel-begrensning</div>
-          <div class="rc-value" style="font-size:13px">${limitedByWeight ? 'Vekt' : 'Tank'}</div>
-        </div>
-      </div>
-      <span class="status-badge badge-ok">Max fuel for ${pax} pax</span>
-      <hr class="divider">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent2);margin-bottom:8px;padding:4px 8px;background:rgba(78,168,222,0.08);border-radius:2px;display:inline-block;">
-        ${genderSummary}
-      </div>
-      ${r.cargoKg > 0 ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent);margin-bottom:8px;padding:4px 8px;background:rgba(232,160,32,0.08);border-radius:2px;display:inline-block;margin-left:8px;">
-        ✦ Cargo compartment: ${r.cargoKg} kg
-      </div>` : ''}
-      ${fuelBreakdown(r.fuel)}
-      ${renderWeightBar([
-        {label:'BEM+Crew', val: ac.zfw, cls:'wb-bem', color:'#2a3a5c'},
-        {label:'Fuel', val: r.maxFuel, cls:'wb-fuel', color:'#3a2a10'},
-        {label:'Payload', val: r.payloadWeight, cls:'wb-payload', color:'#3a1a1a'},
-      ], ac.maxRamp)}
-    </div>`;
-  }
-
-  document.getElementById('results').innerHTML = html;
-}
-
-// Init
-updateConfig();
-renderGenderRows();
-</script>
 </body>
 </html>
