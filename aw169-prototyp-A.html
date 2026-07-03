@@ -565,7 +565,8 @@ const FUEL_FLOW = 300;       // kg/h
 const CRUISE_SPEED = 125;    // knots
 const FINAL_RESERVE = 130;   // kg
 const MAX_FUEL = 888;        // kg
-const CREW_WEIGHT = 170;     // kg (included in ZFW already)
+const CREW_WEIGHT = 170;     // kg (2 pilots)
+const HO_WEIGHT = 85;        // kg (hoist operator, Los config only)
 const BAG_STD = 14;          // kg per pax
 
 // EASA standard weights, helicopter ≤10 seats
@@ -578,22 +579,28 @@ const PAX_FEMALE_SUIT = 75;
 const PAX_WEIGHT_NO_SUIT = PAX_MALE_NO_SUIT;
 const PAX_WEIGHT_SUIT = PAX_MALE_SUIT;
 
-// Aircraft data: [reg_config] -> {zfw, maxRamp}
-const AC = {
-  OXH_LOS: { reg: 'LN-OXH', config: 'Los',          zfw: 3681,   maxRamp: 4850 },
-  OXH_CC:  { reg: 'LN-OXH', config: 'Crew Change',  zfw: 3582,   maxRamp: 4850 },
-  OXI_LOS: { reg: 'LN-OXI', config: 'Los',          zfw: 3681,   maxRamp: 4650 },
-  OXI_CC:  { reg: 'LN-OXI', config: 'Crew Change',  zfw: 3593,   maxRamp: 4650 },
-  OXJ_LOS: { reg: 'LN-OXJ', config: 'Los',          zfw: 3672,   maxRamp: 4850 },
-  OXJ_CC:  { reg: 'LN-OXJ', config: 'Crew Change',  zfw: 3604,   maxRamp: 4850 },
-  OXK_LOS: { reg: 'LN-OXK', config: 'Los',          zfw: 3737.5, maxRamp: 4850 },
-  OXK_CC:  { reg: 'LN-OXK', config: 'Crew Change',  zfw: 3638.5, maxRamp: 4850 },
+// Aircraft data: [reg_config] -> {bem, maxRamp}
+// BEM = Basic Empty Mass, from the aircraft's most recent weighing.
+// ZFW is derived: BEM + crew (+ HO for Los configs) — see getAC().
+// When a new weighing report comes in, only update the "bem" value here.
+const AC_BASE = {
+  OXH_LOS: { reg: 'LN-OXH', config: 'Los',          bem: 3431, maxRamp: 4850 },
+  OXH_CC:  { reg: 'LN-OXH', config: 'Crew Change',  bem: 3417, maxRamp: 4850 },
+  OXI_LOS: { reg: 'LN-OXI', config: 'Los',          bem: 3406, maxRamp: 4650 },
+  OXI_CC:  { reg: 'LN-OXI', config: 'Crew Change',  bem: 3403, maxRamp: 4650 },
+  OXJ_LOS: { reg: 'LN-OXJ', config: 'Los',          bem: 3412, maxRamp: 4850 },
+  OXJ_CC:  { reg: 'LN-OXJ', config: 'Crew Change',  bem: 3429, maxRamp: 4850 },
+  OXK_LOS: { reg: 'LN-OXK', config: 'Los',          bem: 3484, maxRamp: 4850 },
+  OXK_CC:  { reg: 'LN-OXK', config: 'Crew Change',  bem: 3469, maxRamp: 4850 },
 };
 
 let currentMode = 'pax';
 
 function getAC() {
-  return AC[document.getElementById('reg').value];
+  const base = AC_BASE[document.getElementById('reg').value];
+  const isLos = base.config === 'Los';
+  const zfw = base.bem + CREW_WEIGHT + (isLos ? HO_WEIGHT : 0);
+  return { ...base, zfw };
 }
 
 function getPaxWeight() {
@@ -605,8 +612,8 @@ function updateConfig() {
   document.getElementById('zfw-display').value = ac.zfw;
   const isLos = ac.config === 'Los';
   const zfwNote = isLos
-    ? 'ZFW inkl. 2 piloter + HO (170 + 85 kg)'
-    : 'ZFW inkl. 2 piloter (170 kg)';
+    ? `ZFW = BEM ${ac.bem} + 2 piloter (170) + HO (85)`
+    : `ZFW = BEM ${ac.bem} + 2 piloter (170)`;
   document.getElementById('config-info').innerHTML =
     `Max Ramp Weight: ${ac.maxRamp} kg  |  ZFW: ${ac.zfw} kg  |  Max fuel: ${MAX_FUEL} kg<br><span style="color:var(--accent)">${zfwNote}</span>`;
   calculate();
