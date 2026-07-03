@@ -580,14 +580,14 @@ const PAX_WEIGHT_SUIT = PAX_MALE_SUIT;
 
 // Aircraft data: [reg_config] -> {zfw, maxRamp}
 const AC = {
-  OXH_LOS: { reg: 'LN-OXH', config: 'Los',         zfw: 3596, maxRamp: 4850 },
-  OXH_CC:  { reg: 'LN-OXH', config: 'Crew Change',  zfw: 3582, maxRamp: 4850 },
-  OXI_LOS: { reg: 'LN-OXI', config: 'Los',          zfw: 3596, maxRamp: 4650 },
-  OXI_CC:  { reg: 'LN-OXI', config: 'Crew Change',  zfw: 3593, maxRamp: 4650 },
-  OXJ_LOS: { reg: 'LN-OXJ', config: 'Los',          zfw: 3587, maxRamp: 4850 },
-  OXJ_CC:  { reg: 'LN-OXJ', config: 'Crew Change',  zfw: 3604, maxRamp: 4850 },
-  OXK_LOS: { reg: 'LN-OXK', config: 'Los',          zfw: 3651.5, maxRamp: 4850 },
-  OXK_CC:  { reg: 'LN-OXK', config: 'Crew Change',  zfw: 3637.5, maxRamp: 4850 },
+  OXH_LOS: { reg: 'LN-OXH', config: 'Los',          zfw: 3681,   maxRamp: 4850 },
+  OXH_CC:  { reg: 'LN-OXH', config: 'Crew Change',  zfw: 3582,   maxRamp: 4850 },
+  OXI_LOS: { reg: 'LN-OXI', config: 'Los',          zfw: 3681,   maxRamp: 4650 },
+  OXI_CC:  { reg: 'LN-OXI', config: 'Crew Change',  zfw: 3593,   maxRamp: 4650 },
+  OXJ_LOS: { reg: 'LN-OXJ', config: 'Los',          zfw: 3672,   maxRamp: 4850 },
+  OXJ_CC:  { reg: 'LN-OXJ', config: 'Crew Change',  zfw: 3604,   maxRamp: 4850 },
+  OXK_LOS: { reg: 'LN-OXK', config: 'Los',          zfw: 3737.5, maxRamp: 4850 },
+  OXK_CC:  { reg: 'LN-OXK', config: 'Crew Change',  zfw: 3638.5, maxRamp: 4850 },
 };
 
 let currentMode = 'pax';
@@ -603,8 +603,12 @@ function getPaxWeight() {
 function updateConfig() {
   const ac = getAC();
   document.getElementById('zfw-display').value = ac.zfw;
-  document.getElementById('config-info').textContent =
-    `Max Ramp Weight: ${ac.maxRamp} kg  |  ZFW: ${ac.zfw} kg  |  Max fuel: ${MAX_FUEL} kg`;
+  const isLos = ac.config === 'Los';
+  const zfwNote = isLos
+    ? 'ZFW inkl. 2 piloter + HO (170 + 85 kg)'
+    : 'ZFW inkl. 2 piloter (170 kg)';
+  document.getElementById('config-info').innerHTML =
+    `Max Ramp Weight: ${ac.maxRamp} kg  |  ZFW: ${ac.zfw} kg  |  Max fuel: ${MAX_FUEL} kg<br><span style="color:var(--accent)">${zfwNote}</span>`;
   calculate();
 }
 
@@ -916,7 +920,7 @@ function calculate() {
       </div>
       ${fuelBreakdown(r.fuel)}
       ${renderWeightBar([
-        {label:'BEM+Crew', val: ac.zfw, cls:'wb-bem', color:'#2a3a5c'},
+        {label: ac.config==='Los'?'BEM+Crew+HO':'BEM+Crew', val: ac.zfw, cls:'wb-bem', color:'#2a3a5c'},
         {label:'Fuel', val: fuel, cls:'wb-fuel', color:'#3a2a10'},
         {label:'Payload', val: r.payloadUsed, cls:'wb-payload', color:'#3a1a1a'},
       ], ac.maxRamp)}
@@ -969,7 +973,7 @@ function calculate() {
       </div>
       ${fuelBreakdown(r.f)}
       ${renderWeightBar([
-        {label:'BEM+Crew', val: ac.zfw, cls:'wb-bem', color:'#2a3a5c'},
+        {label: ac.config==='Los'?'BEM+Crew+HO':'BEM+Crew', val: ac.zfw, cls:'wb-bem', color:'#2a3a5c'},
         {label:'Fuel', val: Math.min(r.f.total, MAX_FUEL), cls:'wb-fuel', color:'#3a2a10'},
         {label:'Payload', val: r.payloadUsed, cls:'wb-payload', color:'#3a1a1a'},
       ], ac.maxRamp)}
@@ -1030,7 +1034,7 @@ function calculate() {
       </div>` : ''}
       ${fuelBreakdown(r.fuel)}
       ${renderWeightBar([
-        {label:'BEM+Crew', val: ac.zfw, cls:'wb-bem', color:'#2a3a5c'},
+        {label: ac.config==='Los'?'BEM+Crew+HO':'BEM+Crew', val: ac.zfw, cls:'wb-bem', color:'#2a3a5c'},
         {label:'Fuel', val: r.maxFuel, cls:'wb-fuel', color:'#3a2a10'},
         {label:'Payload', val: r.payloadWeight, cls:'wb-payload', color:'#3a1a1a'},
       ], ac.maxRamp)}
