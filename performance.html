@@ -68,6 +68,12 @@
   .disclaimer strong { font-weight: 600; }
   .error-panel { background: rgba(224,82,82,0.08); border: 1px solid var(--danger); border-radius: 4px; padding: 16px 20px; margin-top: 20px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--danger); display: none; }
   .error-panel.visible { display: block; }
+  .slider-group { margin-bottom: 18px; }
+  .slider-label-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .slider-label-row label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+  .slider-val { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--accent2); font-weight: 600; }
+  input[type=range] { width: 100%; accent-color: var(--accent2); cursor: pointer; }
+  .range-hints { display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--muted); margin-top: 2px; }
   .section { display: none; }
   .section.visible { display: block; }
   .chart-info { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 14px 18px; margin-bottom: 20px; }
@@ -99,6 +105,8 @@
 
   <div class="tool-tabs">
     <button class="tool-tab active" onclick="setTool('hover')" id="tab-hover">Hover OGE<br>OEI 2.5 min</button>
+    <button class="tool-tab" onclick="setTool('roc25')" id="tab-roc25">Rate of Climb<br>OEI 2.5 min</button>
+    <button class="tool-tab" onclick="setTool('roccont')" id="tab-roccont">Rate of Climb<br>OEI Continuous</button>
   </div>
 
   <!-- HOVER OGE -->
@@ -113,12 +121,24 @@
     </div>
     <div class="panel">
       <div class="panel-title">Input Parameters</div>
-      <div class="input-grid">
-        <div class="field-group"><label>Pressure Altitude</label><input type="number" id="h-alt" placeholder="0" min="-1000" max="15000" step="100"><div class="input-unit">feet</div></div>
-        <div class="field-group"><label>OAT</label><input type="number" id="h-oat" placeholder="15" min="-40" max="40" step="1"><div class="input-unit">°C</div></div>
-        <div class="field-group"><label>Headwind</label><input type="number" id="h-wind" placeholder="0" min="0" max="50" step="1"><div class="input-unit">knots (100% wind, 50% benefit)</div></div>
-      </div>
-      <button class="calc-btn" onclick="calcHover()">Calculate Max Gross Weight</button>
+      <div class="slider-group">
+          <div class="slider-label-row"><label>Pressure Altitude</label><span class="slider-val" id="h-alt-val">0 ft</span></div>
+          <input type="range" id="h-alt" min="0" max="10000" step="100" value="0"
+            oninput="document.getElementById('h-alt-val').textContent=this.value+' ft';calcHover()">
+          <div class="range-hints"><span>0 ft</span><span>10 000 ft</span></div>
+        </div>
+      <div class="slider-group">
+          <div class="slider-label-row"><label>OAT</label><span class="slider-val" id="h-oat-val">15 °C</span></div>
+          <input type="range" id="h-oat" min="-15" max="40" step="5" value="15"
+            oninput="document.getElementById('h-oat-val').textContent=this.value+' °C';calcHover()">
+          <div class="range-hints"><span>-15 °C</span><span>+40 °C (chart max)</span></div>
+        </div>
+      <div class="slider-group">
+          <div class="slider-label-row"><label>Headwind</label><span class="slider-val" id="h-wind-val">0 kt</span></div>
+          <input type="range" id="h-wind" min="0" max="45" step="1" value="0"
+            oninput="document.getElementById('h-wind-val').textContent=this.value+' kt';calcHover()">
+          <div class="range-hints"><span>0 kt</span><span>45 kt</span></div>
+        </div>
     </div>
     <div class="error-panel" id="h-error"></div>
     <div class="results-panel" id="h-results">
@@ -131,6 +151,84 @@
       </div>
       <div class="notice" id="h-notice"></div>
       <div class="disclaimer">⚠ Data digitalisert ved interpolering fra RFM Fig S5-27. Påregn avvik på <strong>±50 kg</strong>. Verifiser mot originalt RFM-chart før operasjonell bruk.</div>
+    </div>
+  </div>
+
+  <!-- ROC OEI 2.5 MIN -->
+  <div class="section" id="roc25-section">
+    <div class="chart-info">
+      <div class="chart-info-title">Chart Reference</div>
+      <div class="chart-tags">
+        <span class="chart-tag">ROC OEI 2.5 min</span><span class="chart-tag">GW 4800 kg (worst case)</span>
+        <span class="chart-tag">103% NR</span><span class="chart-tag">Elec 100%</span>
+        <span class="chart-tag">Vy 75 KIAS</span><span class="chart-tag amber">Fig S30-104</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Input Parameters</div>
+      <div class="slider-group">
+          <div class="slider-label-row"><label>Pressure Altitude</label><span class="slider-val" id="r25-alt-val">0 ft</span></div>
+          <input type="range" id="r25-alt" min="-1000" max="10000" step="100" value="0"
+            oninput="document.getElementById('r25-alt-val').textContent=this.value+' ft';calcROC('25')">
+          <div class="range-hints"><span>-1000 ft</span><span>10 000 ft</span></div>
+        </div>
+      <div class="slider-group">
+          <div class="slider-label-row"><label>OAT</label><span class="slider-val" id="r25-oat-val">15 °C</span></div>
+          <input type="range" id="r25-oat" min="-15" max="50" step="5" value="15"
+            oninput="document.getElementById('r25-oat-val').textContent=this.value+' °C';calcROC('25')">
+          <div class="range-hints"><span>-15 °C</span><span>+50 °C</span></div>
+        </div>
+    </div>
+    <div class="error-panel" id="r25-error"></div>
+    <div class="results-panel" id="r25-results">
+      <div class="result-title">Rate of Climb — OEI 2.5 min Power</div>
+      <div class="result-grid">
+        <div class="result-card highlight"><div class="rc-label">Rate of Climb</div><div class="rc-value" id="r25-res-roc">—</div></div>
+        <div class="result-card"><div class="rc-label">Climb Gradient</div><div class="rc-value" id="r25-res-grad">—</div></div>
+        <div class="result-card"><div class="rc-label">Vy</div><div class="rc-value" id="r25-res-vy">—</div></div>
+        <div class="result-card"><div class="rc-label">ISA Deviation</div><div class="rc-value" id="r25-res-isa">—</div></div>
+      </div>
+      <div class="notice" id="r25-notice"></div>
+      <div class="disclaimer">⚠ Data digitalisert fra RFM Fig S30-104 (4800 kg). Påregn avvik på <strong>±50 ft/min</strong>. Verifiser mot originalt RFM-chart før operasjonell bruk.</div>
+    </div>
+  </div>
+
+  <!-- ROC OEI CONTINUOUS -->
+  <div class="section" id="roccont-section">
+    <div class="chart-info">
+      <div class="chart-info-title">Chart Reference</div>
+      <div class="chart-tags">
+        <span class="chart-tag">ROC OEI Continuous</span><span class="chart-tag">GW 4800 kg (worst case)</span>
+        <span class="chart-tag">103% NR</span><span class="chart-tag">Elec 75%</span>
+        <span class="chart-tag">Vy 75 KIAS</span><span class="chart-tag amber">Fig S30-105</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Input Parameters</div>
+      <div class="slider-group">
+          <div class="slider-label-row"><label>Pressure Altitude</label><span class="slider-val" id="rcont-alt-val">0 ft</span></div>
+          <input type="range" id="rcont-alt" min="-1000" max="10000" step="100" value="0"
+            oninput="document.getElementById('rcont-alt-val').textContent=this.value+' ft';calcROC('cont')">
+          <div class="range-hints"><span>-1000 ft</span><span>10 000 ft</span></div>
+        </div>
+      <div class="slider-group">
+          <div class="slider-label-row"><label>OAT</label><span class="slider-val" id="rcont-oat-val">15 °C</span></div>
+          <input type="range" id="rcont-oat" min="-15" max="50" step="5" value="15"
+            oninput="document.getElementById('rcont-oat-val').textContent=this.value+' °C';calcROC('cont')">
+          <div class="range-hints"><span>-15 °C</span><span>+50 °C</span></div>
+        </div>
+    </div>
+    <div class="error-panel" id="rcont-error"></div>
+    <div class="results-panel" id="rcont-results">
+      <div class="result-title">Rate of Climb — OEI Continuous Power</div>
+      <div class="result-grid">
+        <div class="result-card highlight"><div class="rc-label">Rate of Climb</div><div class="rc-value" id="rcont-res-roc">—</div></div>
+        <div class="result-card"><div class="rc-label">Climb Gradient</div><div class="rc-value" id="rcont-res-grad">—</div></div>
+        <div class="result-card"><div class="rc-label">Vy</div><div class="rc-value" id="rcont-res-vy">—</div></div>
+        <div class="result-card"><div class="rc-label">ISA Deviation</div><div class="rc-value" id="rcont-res-isa">—</div></div>
+      </div>
+      <div class="notice" id="rcont-notice"></div>
+      <div class="disclaimer">⚠ Data digitalisert fra RFM Fig S30-105 (4800 kg). Påregn avvik på <strong>±50 ft/min</strong>. Verifiser mot originalt RFM-chart før operasjonell bruk.</div>
     </div>
   </div>
 </div>
@@ -194,11 +292,76 @@ function windBenefit(credited,baseGW){
   return lerp(credited,wLo,wHi,bLo,bHi);
 }
 
+const ROC_DATA_25={"-40":{"-1000":1250,"-500":1250,"0":1250,"500":1250,"1000":1250,"1500":1200,"2000":1200,"2500":1200,"3000":1200,"3500":1200,"4000":1150,"4500":1100,"5000":1050,"5500":1000,"6000":950,"6500":900,"7000":800,"7500":750,"8000":700,"8500":650,"9000":600,"9500":550,"10000":500,"10500":450,"11000":400,"11500":350,"12000":300,"12500":250,"13000":200,"13500":150,"14000":100,"14500":50,"15000":0},"-30":{"-1000":1200,"-500":1200,"0":1200,"500":1200,"1000":1200,"1500":1200,"2000":1200,"2500":1200,"3000":1200,"3500":1200,"4000":1200,"4500":1150,"5000":1100,"5500":1000,"6000":950,"6500":900,"7000":850,"7500":800,"8000":750,"8500":700,"9000":650,"9500":600,"10000":550,"10500":500,"11000":450,"11500":400,"12000":350,"12500":250,"13000":200,"13500":150,"14000":100,"14500":50,"15000":0},"-20":{"-1000":1200,"-500":1200,"0":1200,"500":1200,"1000":1200,"1500":1200,"2000":1200,"2500":1200,"3000":1200,"3500":1200,"4000":1200,"4500":1100,"5000":1050,"5500":1000,"6000":950,"6500":900,"7000":850,"7500":800,"8000":700,"8500":650,"9000":600,"9500":550,"10000":500,"10500":450,"11000":400,"11500":350,"12000":300,"12500":200,"13000":150,"13500":100,"14000":50,"14500":0,"15000":-50},"-10":{"-1000":1200,"-500":1200,"0":1200,"500":1200,"1000":1200,"1500":1200,"2000":1200,"2500":1150,"3000":1150,"3500":1100,"4000":1050,"4500":1000,"5000":950,"5500":850,"6000":800,"6500":750,"7000":700,"7500":650,"8000":600,"8500":550,"9000":500,"9500":450,"10000":400,"10500":300,"11000":250,"11500":200,"12000":150,"12500":100,"13000":50,"13500":0,"14000":-100,"14500":-150},"0":{"-1000":1200,"-500":1200,"0":1200,"500":1200,"1000":1200,"1500":1150,"2000":1150,"2500":1050,"3000":1000,"3500":950,"4000":900,"4500":850,"5000":800,"5500":750,"6000":650,"6500":600,"7000":550,"7500":500,"8000":450,"8500":400,"9000":350,"9500":300,"10000":250,"10500":200,"11000":150,"11500":50,"12000":0,"12500":-50,"13000":-100,"13500":-150},"10":{"-1000":1150,"-500":1150,"0":1150,"500":1150,"1000":1100,"1500":1050,"2000":1000,"2500":900,"3000":850,"3500":800,"4000":750,"4500":700,"5000":650,"5500":600,"6000":550,"6500":500,"7000":450,"7500":350,"8000":300,"8500":250,"9000":200,"9500":150,"10000":100,"10500":50,"11000":0,"11500":-50,"12000":-150,"12500":-200},"20":{"-1000":1150,"-500":1100,"0":1050,"500":1000,"1000":900,"1500":850,"2000":800,"2500":750,"3000":700,"3500":650,"4000":600,"4500":550,"5000":500,"5500":450,"6000":400,"6500":350,"7000":250,"7500":200,"8000":150,"8500":100,"9000":50,"9500":0,"10000":-50,"10500":-100,"11000":-150,"11500":-250},"30":{"-1000":1000,"-500":950,"0":900,"500":850,"1000":750,"1500":700,"2000":650,"2500":600,"3000":550,"3500":500,"4000":450,"4500":400,"5000":350,"5500":300,"6000":250,"6500":200,"7000":150,"7500":100,"8000":0,"8500":-50,"9000":-100,"9500":-150,"10000":-200},"40":{"-1000":750,"-500":700,"0":650,"500":600,"1000":550,"1500":500,"2000":450,"2500":400,"3000":350,"3500":250,"4000":200,"4500":150,"5000":100},"50":{"-1000":550,"-500":500,"0":450}};
+const ROC_DATA_CONT={"-40":{"-1000":650,"-500":650,"0":650,"500":600,"1000":600,"1500":600,"2000":600,"2500":600,"3000":600,"3500":600,"4000":600,"4500":550,"5000":550,"5500":550,"6000":550,"6500":550,"7000":550,"7500":550,"8000":550,"8500":550,"9000":550,"9500":500,"10000":500,"10500":450,"11000":400,"11500":350,"12000":300,"12500":250,"13000":150,"13500":100,"14000":50,"14500":0,"15000":-50},"-30":{"-1000":650,"-500":650,"0":650,"500":600,"1000":600,"1500":600,"2000":600,"2500":600,"3000":600,"3500":600,"4000":600,"4500":550,"5000":550,"5500":550,"6000":550,"6500":550,"7000":550,"7500":550,"8000":550,"8500":500,"9000":450,"9500":400,"10000":350,"10500":300,"11000":250,"11500":200,"12000":150,"12500":100,"13000":50,"13500":0,"14000":-50,"14500":-100,"15000":-150},"-20":{"-1000":650,"-500":650,"0":650,"500":600,"1000":600,"1500":600,"2000":600,"2500":600,"3000":600,"3500":600,"4000":600,"4500":550,"5000":550,"5500":550,"6000":550,"6500":550,"7000":550,"7500":500,"8000":450,"8500":400,"9000":350,"9500":300,"10000":250,"10500":200,"11000":150,"11500":100,"12000":50,"12500":-50,"13000":-100,"13500":-150,"14000":-200,"14500":-250,"15000":-300},"-10":{"-1000":600,"-500":600,"0":550,"500":550,"1000":550,"1500":550,"2000":550,"2500":550,"3000":550,"3500":550,"4000":550,"4500":550,"5000":550,"5500":500,"6000":500,"6500":450,"7000":400,"7500":350,"8000":300,"8500":250,"9000":200,"9500":150,"10000":100,"10500":50,"11000":0,"11500":-50,"12000":-100,"12500":-200,"13000":-250,"13500":-300,"14000":-350,"14500":-400},"0":{"-1000":600,"-500":600,"0":550,"500":550,"1000":550,"1500":550,"2000":550,"2500":550,"3000":550,"3500":550,"4000":550,"4500":500,"5000":450,"5500":400,"6000":350,"6500":300,"7000":250,"7500":200,"8000":150,"8500":100,"9000":50,"9500":0,"10000":-50,"10500":-100,"11000":-150,"11500":-200,"12000":-250,"12500":-350,"13000":-400,"13500":-450},"10":{"-1000":600,"-500":600,"0":550,"500":550,"1000":550,"1500":550,"2000":550,"2500":500,"3000":500,"3500":450,"4000":400,"4500":350,"5000":300,"5500":250,"6000":200,"6500":150,"7000":100,"7500":50,"8000":0,"8500":-50,"9000":-100,"9500":-150,"10000":-200,"10500":-300,"11000":-350,"11500":-400,"12000":-450,"12500":-500},"20":{"-1000":550,"-500":550,"0":550,"500":550,"1000":500,"1500":450,"2000":400,"2500":350,"3000":300,"3500":250,"4000":200,"4500":150,"5000":100,"5500":50,"6000":0,"6500":-50,"7000":-100,"7500":-150,"8000":-200,"8500":-250,"9000":-300,"9500":-350,"10000":-400,"10500":-450,"11000":-500,"11500":-550},"30":{"-1000":550,"-500":500,"0":450,"500":400,"1000":350,"1500":300,"2000":250,"2500":200,"3000":150,"3500":100,"4000":50,"4500":0,"5000":-50,"5500":-100,"6000":-150,"6500":-200,"7000":-250,"7500":-300,"8000":-350,"8500":-400,"9000":-450,"9500":-550,"10000":-600},"40":{"-1000":350,"-500":300,"0":250,"500":200,"1000":150,"1500":100,"2000":50,"2500":0,"3000":-50,"3500":-100,"4000":-150,"4500":-200,"5000":-250},"50":{"-1000":100,"-500":50,"0":0}};
+
+// ── ROC CALCULATION ──────────────────────────────────────────────
+// ISA temp at pressure altitude
+function isaTemp(alt){ return 15 - 1.9812*alt/1000; }
+
+// Interpolate ROC within one OAT column (alts every 500 ft). null if outside column validity.
+function rocInColumn(colObj, alt){
+  const a0 = Math.floor(alt/500)*500, a1 = a0+500;
+  const v0 = colObj[String(a0)], v1 = colObj[String(a1)];
+  if (alt === a0) return v0 !== undefined ? v0 : null;
+  if (v0 === undefined || v1 === undefined) return null;
+  return v0 + (v1-v0)*(alt-a0)/500;
+}
+
+// Bilinear: altitude within columns, then linear between 10° OAT columns (5° input steps)
+function rocLookup(data, alt, oat){
+  const o0 = Math.floor(oat/10)*10, o1 = o0+10;
+  if (oat === o0){
+    const c = data[String(o0)];
+    return c ? rocInColumn(c, alt) : null;
+  }
+  const c0 = data[String(o0)], c1 = data[String(o1)];
+  if (!c0 || !c1) return null;
+  const r0 = rocInColumn(c0, alt), r1 = rocInColumn(c1, alt);
+  if (r0 === null || r1 === null) return null;
+  return r0 + (r1-r0)*(oat-o0)/10;
+}
+
+function calcROC(which){
+  const p = which==='25' ? 'r25' : 'rcont';
+  const data = which==='25' ? ROC_DATA_25 : ROC_DATA_CONT;
+  const alt = parseFloat(document.getElementById(p+'-alt').value);
+  const oat = parseFloat(document.getElementById(p+'-oat').value);
+  const err = document.getElementById(p+'-error'), res = document.getElementById(p+'-results');
+  err.classList.remove('visible'); res.classList.remove('visible');
+
+  if (!data){ err.textContent='Datasett for OEI Continuous er ikke lastet inn ennå.'; err.classList.add('visible'); return; }
+  if (isNaN(alt)||isNaN(oat)){ err.textContent='Fyll inn både høyde og OAT.'; err.classList.add('visible'); return; }
+  if (alt < -1000 || alt > 15000){ err.textContent=`Høyde ${alt} ft utenfor chartområde (-1000 til 15000 ft).`; err.classList.add('visible'); return; }
+  if (oat < -40 || oat > 50){ err.textContent=`OAT ${oat}°C utenfor område (-40 til +50°C).`; err.classList.add('visible'); return; }
+  if (oat % 5 !== 0){ err.textContent='OAT må angis i 5-graders steg.'; err.classList.add('visible'); return; }
+
+  const isa = isaTemp(alt), dev = oat - isa;
+  if (dev > 35){ err.textContent=`OAT ${oat}°C overskrider MAX OAT LIMIT ISA+35 (maks ${(isa+35).toFixed(0)}°C ved ${alt} ft). Flyging ikke tillatt.`; err.classList.add('visible'); return; }
+
+  const roc = rocLookup(data, alt, oat);
+  if (roc === null){ err.textContent=`${alt} ft / ${oat}°C er utenfor chartgrenser (Hd LIMIT 15000 ft). Ingen data tilgjengelig.`; err.classList.add('visible'); return; }
+
+  const vy = Math.max(60, 75 - Math.max(0,(alt-10000)/1000));
+  const grad = roc / (vy/60);   // ft per NM
+  const rocR = Math.round(roc/10)*10, gradR = Math.round(grad/10)*10;
+
+  document.getElementById(p+'-res-roc').innerHTML = `${rocR.toLocaleString('no-NO')}<span class="rc-unit">ft/min</span>`;
+  document.getElementById(p+'-res-grad').innerHTML = `${gradR.toLocaleString('no-NO')}<span class="rc-unit">ft/NM</span>`;
+  document.getElementById(p+'-res-vy').innerHTML = `${vy.toFixed(0)}<span class="rc-unit">KIAS</span>`;
+  document.getElementById(p+'-res-isa').innerHTML = `ISA${dev>=0?'+':''}${dev.toFixed(0)}<span class="rc-unit">°C</span>`;
+
+  let note = `GW 4800 kg (worst case). Interpolert i 5°C-steg og pr. fot fra 500 ft-tabell.`;
+  if (rocR <= 0) note += ` ⚠ NEGATIV/INGEN KLATREEVNE — OEI drift-down.`;
+  document.getElementById(p+'-notice').textContent = note;
+  res.classList.add('visible');
+}
+
 // ── UI ────────────────────────────────────────────────────────────
 let currentTool='hover';
 function setTool(t){
   currentTool=t;
-  ['hover'].forEach(id=>{
+  ['hover','roc25','roccont'].forEach(id=>{
     document.getElementById('tab-'+id).classList.toggle('active',id===t);
     document.getElementById(id+'-section').classList.toggle('visible',id===t);
   });
@@ -217,20 +380,25 @@ function calcHover(){
   if(base===null){err.textContent=`${alt} ft / ${oat}°C beyond chart limits. Hover OGE not achievable.`;err.classList.add('visible');return;}
   const fullBenefit=windBenefit(wind,base);
   const benefit=fullBenefit*0.5;
-  const total=Math.min(4850,Math.round(base+benefit));
+  const total=Math.min(4800,Math.round(base+benefit));
   document.getElementById('h-res-weight').innerHTML=`${total.toLocaleString('no-NO')}<span class="rc-unit">kg</span>`;
   document.getElementById('h-res-base').innerHTML=`${Math.round(base).toLocaleString('no-NO')}<span class="rc-unit">kg</span>`;
   document.getElementById('h-res-benefit').innerHTML=`+${Math.round(benefit).toLocaleString('no-NO')}<span class="rc-unit">kg</span>`;
   document.getElementById('h-res-wind').innerHTML=`${wind}<span class="rc-unit">kt</span>`;
-  document.getElementById('h-notice').textContent=`Headwind ${wind} kt (100% wind, 50% weight benefit credited per RFM). Full benefit: +${Math.round(fullBenefit)} kg → credited: +${Math.round(benefit)} kg.${total===4850?' Capped at MTOW 4850 kg.':''}`;
+  document.getElementById('h-notice').textContent=`Headwind ${wind} kt (100% wind, 50% weight benefit credited per RFM). Full benefit: +${Math.round(fullBenefit)} kg → credited: +${Math.round(benefit)} kg.${total===4800?' Capped at max gross weight 4800 kg.':''}`;
   res.classList.add('visible');
 }
 
 
 
+// Init: compute all tabs with default slider values
+calcHover(); calcROC('25'); calcROC('cont');
+
 document.addEventListener('keydown',e=>{
   if(e.key!=='Enter')return;
   if(currentTool==='hover')calcHover();
+  else if(currentTool==='roc25')calcROC('25');
+  else if(currentTool==='roccont')calcROC('cont');
 });
 </script>
 </body>
