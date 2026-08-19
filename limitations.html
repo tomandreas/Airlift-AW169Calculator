@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AW169 — Limitations</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0b0e14; --surface:#11151d; --surface2:#151a24; --border:#252c3b;
+    --accent:#e8a020; --accent2:#4ea8de; --text:#c9d2e0; --muted:#5c6778;
+    --white:#f0f4fa; --danger:#e05252; --ok:#52c07a;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'IBM Plex Sans',sans-serif; padding:30px 16px 60px;
+    background-image:linear-gradient(rgba(37,44,59,0.25) 1px,transparent 1px),linear-gradient(90deg,rgba(37,44,59,0.25) 1px,transparent 1px);
+    background-size:32px 32px; }
+  .page { max-width:820px; margin:0 auto; }
+  header { display:flex; align-items:flex-start; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
+  .logo-block h1 { font-family:'Bebas Neue',sans-serif; font-size:46px; letter-spacing:2px; color:var(--white); line-height:0.95; }
+  .logo-block h1 span { color:var(--accent); }
+  .logo-block p { font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-top:6px; }
+  .rfm-rev { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:1px; color:var(--accent2); margin-top:4px; }
+  .header-right { margin-left:auto; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .header-badge { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--accent); border:1px solid var(--accent); padding:4px 10px; border-radius:2px; letter-spacing:1px; }
+  .back-link { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted); text-decoration:none; letter-spacing:1px; transition:color 0.15s; }
+  .back-link:hover { color:var(--accent); }
+  .searchbar { display:flex; gap:10px; margin-bottom:16px; position:sticky; top:0; z-index:10; background:var(--bg); padding:10px 0; }
+  .searchbar input { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:3px; padding:11px 14px;
+    color:var(--white); font-family:'IBM Plex Mono',monospace; font-size:12px; }
+  .searchbar input:focus { outline:none; border-color:var(--accent2); }
+  .searchbar input::placeholder { color:var(--muted); }
+  .exp-btn { background:none; border:1px solid var(--border); border-radius:3px; color:var(--muted);
+    font-family:'IBM Plex Mono',monospace; font-size:10px; padding:0 14px; cursor:pointer; letter-spacing:1px; transition:all 0.15s; }
+  .exp-btn:hover { border-color:var(--accent2); color:var(--accent2); }
+  .cat { background:var(--surface); border:1px solid var(--border); border-radius:4px; margin-bottom:10px; overflow:hidden; }
+  .cat-head { display:flex; align-items:center; gap:12px; padding:14px 16px; cursor:pointer; user-select:none; flex-wrap:wrap; }
+  .cat-head:hover { background:var(--surface2); }
+  .cat-arrow { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--accent); transition:transform 0.15s; }
+  .cat.open .cat-arrow { transform:rotate(90deg); }
+  .cat-title { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:1.5px; color:var(--white); flex:1; }
+  .cat-count { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted); }
+  .cat-ref { font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--muted); border:1px solid var(--border); border-radius:2px; padding:2px 6px; }
+  .cat-body { display:none; border-top:1px solid var(--border); }
+  .cat.open .cat-body { display:block; }
+  .sub-head { display:flex; align-items:center; gap:10px; padding:10px 16px 10px 28px; cursor:pointer; user-select:none;
+    background:rgba(37,44,59,0.18); border-bottom:1px solid var(--border); }
+  .sub-head:hover { background:rgba(37,44,59,0.4); }
+  .sub-arrow { font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--accent2); transition:transform 0.15s; }
+  .sub.open .sub-arrow { transform:rotate(90deg); }
+  .sub-title { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent2); flex:1; }
+  .sub-count { font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--muted); }
+  .sub-body { display:none; }
+  .sub.open .sub-body { display:block; }
+  .row { display:flex; justify-content:space-between; gap:16px; padding:11px 16px 11px 28px; border-bottom:1px solid rgba(37,44,59,0.55); }
+  .row:last-child { border-bottom:none; }
+  .row-left { flex:1; min-width:0; }
+  .row-lim { font-size:13px; color:var(--text); line-height:1.45; }
+  .row-tag { font-family:'IBM Plex Mono',monospace; font-size:8px; color:var(--accent); border:1px solid var(--accent);
+    border-radius:2px; padding:1px 5px; letter-spacing:1px; margin-left:8px; vertical-align:middle; white-space:nowrap; }
+  .row-cond { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted); margin-top:3px; line-height:1.5; }
+  .row-val { font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; color:var(--accent); text-align:right; max-width:45%; }
+  .row-val .unit { font-size:10px; color:var(--muted); font-weight:400; margin-left:4px; }
+  .row-val.prohibited { color:var(--danger); }
+  .fig-block { padding:18px 16px 16px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); text-align:center; }
+  .fig-block img { width:100%; max-width:440px; height:auto; }
+  .fig-cap { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-top:8px; }
+  .row.hidden, .sub.hidden, .cat.hidden { display:none; }
+  .no-results { display:none; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); text-align:center; padding:30px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="logo-block">
+      <h1>AW<span>169</span></h1>
+      <p>Limitations</p>
+      <div class="rfm-rev">AW169 EP RFM Issue 1 Revision 5</div>
+    </div>
+    <div class="header-right">
+      <div class="header-badge">OPS TOOL</div>
+      <a href="index.html" class="back-link">← Back</a>
+    </div>
+  </header>
+
+  <div class="searchbar">
+    <input type="text" id="search" placeholder="Search limitations…" oninput="doSearch()">
+    <button class="exp-btn" id="expall" onclick="toggleAll()">Expand all</button>
+  </div>
+
+<div class="cat" data-cat="airspeed limitations">
+    <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-arrow">▶</span>
+      <span class="cat-title">Airspeed Limitations</span>
+      <span class="cat-count">10</span>
+      <span class="cat-ref">RFM 1-8 – 1-10</span>
+    </div>
+    <div class="cat-body">
+<div class="row" data-s="vne (power on, oei / power off) fig 1-5 / 1-6 sea level up to isa+30°c: power on 160 / oei 135 / power off 125 kias — varies with hp and oat, ref fig 1-5 / 1-6">
+          <div class="row-left"><div class="row-lim">Vne (Power ON, OEI / Power OFF)</div><div class="row-cond">Sea level up to ISA+30°C: Power ON 160 / OEI 135 / Power OFF 125 KIAS — varies with Hp and OAT, ref Fig 1-5 / 1-6</div></div>
+          <div class="row-val">Fig 1-5 / 1-6</div>
+        </div>
+<div class="row" data-s="maximum airspeed in aeo with tq above 100% 90 ">
+          <div class="row-left"><div class="row-lim">Maximum airspeed in AEO with TQ above 100%</div></div>
+          <div class="row-val">90<span class="unit">KIAS</span></div>
+        </div>
+<div class="row" data-s="minimum airspeed for flight under ifr (vmini) 50 ">
+          <div class="row-left"><div class="row-lim">Minimum airspeed for flight under IFR (Vmini)</div></div>
+          <div class="row-val">50<span class="unit">KIAS</span></div>
+        </div>
+<div class="row" data-s="maximum airspeed for ifr approach 130 (up to 5000 ft, then -2 kt/1000 ft) ">
+          <div class="row-left"><div class="row-lim">Maximum airspeed for IFR approach</div></div>
+          <div class="row-val">130 (up to 5000 ft, then -2 kt/1000 ft)<span class="unit">KIAS</span></div>
+        </div>
+<div class="row" data-s="maximum airspeed with one ap failed 120 ">
+          <div class="row-left"><div class="row-lim">Maximum airspeed with one AP failed</div></div>
+          <div class="row-val">120<span class="unit">KIAS</span></div>
+        </div>
+<div class="row" data-s="maximum airspeed for operation of windscreen wipers 140 ">
+          <div class="row-left"><div class="row-lim">Maximum airspeed for operation of windscreen wipers</div></div>
+          <div class="row-val">140<span class="unit">KIAS</span></div>
+        </div>
+<div class="row" data-s="minimum airspeed in autorotation 50 ">
+          <div class="row-left"><div class="row-lim">Minimum airspeed in autorotation</div></div>
+          <div class="row-val">50<span class="unit">KIAS</span></div>
+        </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Cabin Sliding Door Open Limitations</span><span class="sub-count">3</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="maximum airspeed with one door locked open 80 kit door lock passenger doors p/n 6f5213f00111 must be installed">
+          <div class="row-left"><div class="row-lim">Maximum airspeed with one door locked open</div><div class="row-cond">KIT DOOR LOCK PASSENGER DOORS P/N 6F5213F00111 must be installed</div></div>
+          <div class="row-val">80<span class="unit">KIAS</span></div>
+        </div>
+<div class="row" data-s="maximum airspeed with both doors locked open 100 same kit requirement">
+          <div class="row-left"><div class="row-lim">Maximum airspeed with both doors locked open</div><div class="row-cond">Same kit requirement</div></div>
+          <div class="row-val">100<span class="unit">KIAS</span></div>
+        </div>
+<div class="row" data-s="maximum airspeed for opening/closing door 80 opening/closing in flight must be done by a person trained for the task">
+          <div class="row-left"><div class="row-lim">Maximum airspeed for opening/closing door</div><div class="row-cond">Opening/closing in flight must be done by a person trained for the task</div></div>
+          <div class="row-val">80<span class="unit">KIAS</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+<div class="cat" data-cat="wind limitations">
+    <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-arrow">▶</span>
+      <span class="cat-title">Wind Limitations</span>
+      <span class="cat-count">3</span>
+      <span class="cat-ref">RFM 1-11</span>
+    </div>
+    <div class="cat-body">
+<div class="row" data-s="maximum wind speed for engine and rotor starting / stopping fig 1-9 approx 50 kt most azimuths, reduced envelope near tail; if forecast wind exceeds 50 kt, park sheltered or in hangar">
+          <div class="row-left"><div class="row-lim">Maximum wind speed for engine and rotor starting / stopping</div><div class="row-cond">Approx 50 kt most azimuths, reduced envelope near tail; if forecast wind exceeds 50 kt, park sheltered or in hangar</div></div>
+          <div class="row-val">Fig 1-9</div>
+        </div>
+<div class="fig-block">
+        <img src="data:image/png;base64,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" alt="Fig 1-9 windspeed limitations polar diagram">
+        <div class="fig-cap">Fig 1-9 — Windspeed limitations for engine and rotor starting / stopping</div>
+      </div>
+<div class="row" data-s="maximum crosswind for cat-a operations 20 cat-a supplement">
+          <div class="row-left"><div class="row-lim">Maximum crosswind for CAT-A operations<span class="row-tag">CAT-A SUPPL</span></div><div class="row-cond">CAT-A Supplement</div></div>
+          <div class="row-val">20<span class="unit">kt</span></div>
+        </div>
+<div class="row" data-s="tailwind for cat-a operations prohibited cat-a supplement">
+          <div class="row-left"><div class="row-lim">Tailwind for CAT-A operations<span class="row-tag">CAT-A SUPPL</span></div><div class="row-cond">CAT-A Supplement</div></div>
+          <div class="row-val prohibited">PROHIBITED</div>
+        </div>
+    </div>
+  </div>
+<div class="cat" data-cat="weight and cg limitations">
+    <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-arrow">▶</span>
+      <span class="cat-title">Weight and CG Limitations</span>
+      <span class="cat-count">3</span>
+      <span class="cat-ref">RFM 1-2</span>
+    </div>
+    <div class="cat-body">
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Maximum Weight</span><span class="sub-count">2</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="maximum gross weight for towing or taxi 4850 ">
+          <div class="row-left"><div class="row-lim">Maximum gross weight for towing or taxi</div></div>
+          <div class="row-val">4850<span class="unit">kg</span></div>
+        </div>
+<div class="row" data-s="maximum take-off weight 4800 ">
+          <div class="row-left"><div class="row-lim">Maximum Take-off Weight</div></div>
+          <div class="row-val">4800<span class="unit">kg</span></div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Minimum Weight</span><span class="sub-count">1</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="minimum flight/rotor running gross weight 3300 see figure 1-7 for increased minimum weight in low temperature (area a: 3550 kg)">
+          <div class="row-left"><div class="row-lim">Minimum flight/rotor running gross weight</div><div class="row-cond">See Figure 1-7 for increased minimum weight in low temperature (Area A: 3550 kg)</div></div>
+          <div class="row-val">3300<span class="unit">kg</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+<div class="cat" data-cat="ground speed limitations">
+    <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-arrow">▶</span>
+      <span class="cat-title">Ground Speed Limitations</span>
+      <span class="cat-count">6</span>
+      <span class="cat-ref">RFM 1-11</span>
+    </div>
+    <div class="cat-body">
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">On Paved Surfaces</span><span class="sub-count">3</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="maximum taxi speed 40 above 10 kt (18 km/h) nose wheel must be lock">
+          <div class="row-left"><div class="row-lim">Maximum taxi speed</div><div class="row-cond">Above 10 kt (18 km/h) nose wheel must be LOCK</div></div>
+          <div class="row-val">40<span class="unit">kt GS</span></div>
+        </div>
+<div class="row" data-s="maximum speed for rolling take-off or running landing 60 ">
+          <div class="row-left"><div class="row-lim">Maximum speed for rolling Take-Off or running landing</div></div>
+          <div class="row-val">60<span class="unit">kt GS</span></div>
+        </div>
+<div class="row" data-s="maximum speed for emergency landing 60 ">
+          <div class="row-left"><div class="row-lim">Maximum speed for emergency landing</div></div>
+          <div class="row-val">60<span class="unit">kt GS</span></div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">On Prepared Grass Surfaces</span><span class="sub-count">3</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="maximum taxi speed 20 above 10 kt (18 km/h) nose wheel must be lock">
+          <div class="row-left"><div class="row-lim">Maximum taxi speed</div><div class="row-cond">Above 10 kt (18 km/h) nose wheel must be LOCK</div></div>
+          <div class="row-val">20<span class="unit">kt GS</span></div>
+        </div>
+<div class="row" data-s="maximum speed for rolling take-off or running landing 30 ">
+          <div class="row-left"><div class="row-lim">Maximum speed for rolling Take-Off or running landing</div></div>
+          <div class="row-val">30<span class="unit">kt GS</span></div>
+        </div>
+<div class="row" data-s="maximum speed for emergency landing 50 ">
+          <div class="row-left"><div class="row-lim">Maximum speed for emergency landing</div></div>
+          <div class="row-val">50<span class="unit">kt GS</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+<div class="cat" data-cat="altitude limitations">
+    <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-arrow">▶</span>
+      <span class="cat-title">Altitude Limitations</span>
+      <span class="cat-count">1</span>
+      <span class="cat-ref">RFM 1-11</span>
+    </div>
+    <div class="cat-body">
+<div class="row" data-s="maximum operating altitude 15000 ">
+          <div class="row-left"><div class="row-lim">Maximum operating altitude</div></div>
+          <div class="row-val">15000<span class="unit">ft</span></div>
+        </div>
+    </div>
+  </div>
+<div class="cat" data-cat="oat limitations">
+    <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-arrow">▶</span>
+      <span class="cat-title">OAT Limitations</span>
+      <span class="cat-count">2</span>
+      <span class="cat-ref">RFM 1-11</span>
+    </div>
+    <div class="cat-body">
+<div class="row" data-s="maximum outside air temperature 50 isa+35°c limit line, tapering with altitude">
+          <div class="row-left"><div class="row-lim">Maximum outside air temperature</div><div class="row-cond">ISA+35°C limit line, tapering with altitude</div></div>
+          <div class="row-val">50<span class="unit">°C</span></div>
+        </div>
+<div class="row" data-s="minimum outside air temperature -40 area a (below approx 5900 ft, below approx -30°c) requires minimum gw 3550 kg">
+          <div class="row-left"><div class="row-lim">Minimum outside air temperature</div><div class="row-cond">Area A (below approx 5900 ft, below approx -30°C) requires minimum GW 3550 kg</div></div>
+          <div class="row-val">-40<span class="unit">°C</span></div>
+        </div>
+    </div>
+  </div>
+<div class="cat" data-cat="cold temperature limitations">
+    <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-arrow">▶</span>
+      <span class="cat-title">Cold Temperature Limitations</span>
+      <span class="cat-count">1</span>
+      <span class="cat-ref">RFM 1-12</span>
+    </div>
+    <div class="cat-body">
+<div class="row" data-s="hydraulic fluid temperature below +20°c &lt; 20 pilot must fly attentive">
+          <div class="row-left"><div class="row-lim">Hydraulic fluid temperature below +20°C</div><div class="row-cond">Pilot must fly attentive</div></div>
+          <div class="row-val">&lt; 20<span class="unit">°C</span></div>
+        </div>
+    </div>
+  </div>
+<div class="cat" data-cat="slope limitations">
+    <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-arrow">▶</span>
+      <span class="cat-title">Slope Limitations</span>
+      <span class="cat-count">4</span>
+      <span class="cat-ref">RFM 1-16</span>
+    </div>
+    <div class="cat-body">
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Sloped Take-Off and Landing</span><span class="sub-count">4</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="nose up 10 ">
+          <div class="row-left"><div class="row-lim">Nose up</div></div>
+          <div class="row-val">10<span class="unit">deg</span></div>
+        </div>
+<div class="row" data-s="nose down 7 ">
+          <div class="row-left"><div class="row-lim">Nose down</div></div>
+          <div class="row-val">7<span class="unit">deg</span></div>
+        </div>
+<div class="row" data-s="left wing low 10 ">
+          <div class="row-left"><div class="row-lim">Left wing low</div></div>
+          <div class="row-val">10<span class="unit">deg</span></div>
+        </div>
+<div class="row" data-s="right wing low 10 ">
+          <div class="row-left"><div class="row-lim">Right wing low</div></div>
+          <div class="row-val">10<span class="unit">deg</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+<div class="cat" data-cat="power plant limitations">
+    <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-arrow">▶</span>
+      <span class="cat-title">Power Plant Limitations</span>
+      <span class="cat-count">39</span>
+      <span class="cat-ref">RFM 1-17 – 1-20</span>
+    </div>
+    <div class="cat-body">
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Power Index (PI %) - AEO, Airspeed ≤ 90 KIAS</span><span class="sub-count">4</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="maximum continuous operation 100 ">
+          <div class="row-left"><div class="row-lim">Maximum continuous operation</div></div>
+          <div class="row-val">100<span class="unit">PI %</span></div>
+        </div>
+<div class="row" data-s="30 minutes take-off range 101 to 122 ">
+          <div class="row-left"><div class="row-lim">30 minutes Take-Off range</div></div>
+          <div class="row-val">101 to 122<span class="unit">PI %</span></div>
+        </div>
+<div class="row" data-s="maximum 30 minutes 122 ">
+          <div class="row-left"><div class="row-lim">Maximum 30 minutes</div></div>
+          <div class="row-val">122<span class="unit">PI %</span></div>
+        </div>
+<div class="row" data-s="transient (10 seconds, tq) 132 ">
+          <div class="row-left"><div class="row-lim">Transient (10 seconds, TQ)</div></div>
+          <div class="row-val">132<span class="unit">PI %</span></div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Power Index (PI %) - AEO, Airspeed &gt; 90 KIAS</span><span class="sub-count">2</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="maximum continuous operation 100 ">
+          <div class="row-left"><div class="row-lim">Maximum continuous operation</div></div>
+          <div class="row-val">100<span class="unit">PI %</span></div>
+        </div>
+<div class="row" data-s="transient (10 seconds, tq) 132 ">
+          <div class="row-left"><div class="row-lim">Transient (10 seconds, TQ)</div></div>
+          <div class="row-val">132<span class="unit">PI %</span></div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Power Index (PI %) - One Engine Inoperative</span><span class="sub-count">3</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="maximum continuous 148 ">
+          <div class="row-left"><div class="row-lim">Maximum continuous</div></div>
+          <div class="row-val">148<span class="unit">PI %</span></div>
+        </div>
+<div class="row" data-s="2.5 min range 149 to 185 ">
+          <div class="row-left"><div class="row-lim">2.5 min range</div></div>
+          <div class="row-val">149 to 185<span class="unit">PI %</span></div>
+        </div>
+<div class="row" data-s="transient (10 seconds, tq) 195 ">
+          <div class="row-left"><div class="row-lim">Transient (10 seconds, TQ)</div></div>
+          <div class="row-val">195<span class="unit">PI %</span></div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Engine Power Check</span><span class="sub-count">1</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="automatic engine power check usage prohibited ">
+          <div class="row-left"><div class="row-lim">Automatic engine power check usage</div></div>
+          <div class="row-val prohibited">PROHIBITED</div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Gas Generator Speed (NG %) - All Engines Operating</span><span class="sub-count">4</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="maximum continuous 96.5 ">
+          <div class="row-left"><div class="row-lim">Maximum continuous</div></div>
+          <div class="row-val">96.5<span class="unit">NG %</span></div>
+        </div>
+<div class="row" data-s="30 minutes take-off range 96.6 to 98.2 ">
+          <div class="row-left"><div class="row-lim">30 minutes Take-Off range</div></div>
+          <div class="row-val">96.6 to 98.2<span class="unit">NG %</span></div>
+        </div>
+<div class="row" data-s="maximum 30 minutes 98.2 ">
+          <div class="row-left"><div class="row-lim">Maximum 30 minutes</div></div>
+          <div class="row-val">98.2<span class="unit">NG %</span></div>
+        </div>
+<div class="row" data-s="transient (5 seconds) 98.9 ">
+          <div class="row-left"><div class="row-lim">Transient (5 seconds)</div></div>
+          <div class="row-val">98.9<span class="unit">NG %</span></div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Gas Generator Speed (NG %) - One Engine Inoperative</span><span class="sub-count">4</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="maximum continuous 98.8 ">
+          <div class="row-left"><div class="row-lim">Maximum continuous</div></div>
+          <div class="row-val">98.8<span class="unit">NG %</span></div>
+        </div>
+<div class="row" data-s="2.5 min range 98.9 to 100.7 ">
+          <div class="row-left"><div class="row-lim">2.5 min range</div></div>
+          <div class="row-val">98.9 to 100.7<span class="unit">NG %</span></div>
+        </div>
+<div class="row" data-s="maximum 2.5 min 100.7 ">
+          <div class="row-left"><div class="row-lim">Maximum 2.5 min</div></div>
+          <div class="row-val">100.7<span class="unit">NG %</span></div>
+        </div>
+<div class="row" data-s="transient (5 seconds) 101.2 ">
+          <div class="row-left"><div class="row-lim">Transient (5 seconds)</div></div>
+          <div class="row-val">101.2<span class="unit">NG %</span></div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Power Turbine Speed (NF %)</span><span class="sub-count">5</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="minimum transient (20 seconds) 85 ">
+          <div class="row-left"><div class="row-lim">Minimum transient (20 seconds)</div></div>
+          <div class="row-val">85<span class="unit">NF %</span></div>
+        </div>
+<div class="row" data-s="minimum 90 ">
+          <div class="row-left"><div class="row-lim">Minimum</div></div>
+          <div class="row-val">90<span class="unit">NF %</span></div>
+        </div>
+<div class="row" data-s="continuous operation range 90 to 107 ">
+          <div class="row-left"><div class="row-lim">Continuous operation range</div></div>
+          <div class="row-val">90 to 107<span class="unit">NF %</span></div>
+        </div>
+<div class="row" data-s="maximum continuous 107 ">
+          <div class="row-left"><div class="row-lim">Maximum continuous</div></div>
+          <div class="row-val">107<span class="unit">NF %</span></div>
+        </div>
+<div class="row" data-s="maximum transient (20 seconds) 115 nf markings in accordance with nr markings">
+          <div class="row-left"><div class="row-lim">Maximum transient (20 seconds)</div><div class="row-cond">NF markings in accordance with NR markings</div></div>
+          <div class="row-val">115<span class="unit">NF %</span></div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Oil Temperature (Engine Oil °C)</span><span class="sub-count">5</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="minimum for engine starting -40 ">
+          <div class="row-left"><div class="row-lim">Minimum for engine starting</div></div>
+          <div class="row-val">-40<span class="unit">°C</span></div>
+        </div>
+<div class="row" data-s="cautionary range -40 to 39 ">
+          <div class="row-left"><div class="row-lim">Cautionary range</div></div>
+          <div class="row-val">-40 to 39<span class="unit">°C</span></div>
+        </div>
+<div class="row" data-s="normal operation range 40 to 130 ">
+          <div class="row-left"><div class="row-lim">Normal operation range</div></div>
+          <div class="row-val">40 to 130<span class="unit">°C</span></div>
+        </div>
+<div class="row" data-s="cautionary range (1 min) 131 to 135 ">
+          <div class="row-left"><div class="row-lim">Cautionary range (1 min)</div></div>
+          <div class="row-val">131 to 135<span class="unit">°C</span></div>
+        </div>
+<div class="row" data-s="maximum 135 ">
+          <div class="row-left"><div class="row-lim">Maximum</div></div>
+          <div class="row-val">135<span class="unit">°C</span></div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Oil Pressure (Engine Oil bar)</span><span class="sub-count">5</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="minimum 2.6 ">
+          <div class="row-left"><div class="row-lim">Minimum</div></div>
+          <div class="row-val">2.6<span class="unit">bar</span></div>
+        </div>
+<div class="row" data-s="transient (20 sec) 2.6 to 5.1 ">
+          <div class="row-left"><div class="row-lim">Transient (20 sec)</div></div>
+          <div class="row-val">2.6 to 5.1<span class="unit">bar</span></div>
+        </div>
+<div class="row" data-s="normal operation range 5.2 to 15.5 ">
+          <div class="row-left"><div class="row-lim">Normal operation range</div></div>
+          <div class="row-val">5.2 to 15.5<span class="unit">bar</span></div>
+        </div>
+<div class="row" data-s="transient (20 sec) 15.6 to 18.1 ">
+          <div class="row-left"><div class="row-lim">Transient (20 sec)</div></div>
+          <div class="row-val">15.6 to 18.1<span class="unit">bar</span></div>
+        </div>
+<div class="row" data-s="maximum 18.1 ">
+          <div class="row-left"><div class="row-lim">Maximum</div></div>
+          <div class="row-val">18.1<span class="unit">bar</span></div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Starter Duty Cycle - Engine Starting</span><span class="sub-count">3</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="wait time after 1st start attempt 30 ">
+          <div class="row-left"><div class="row-lim">Wait time after 1st start attempt</div></div>
+          <div class="row-val">30<span class="unit">sec</span></div>
+        </div>
+<div class="row" data-s="wait time after 2nd start attempt 30 ">
+          <div class="row-left"><div class="row-lim">Wait time after 2nd start attempt</div></div>
+          <div class="row-val">30<span class="unit">sec</span></div>
+        </div>
+<div class="row" data-s="wait time after 3rd start attempt 30 ">
+          <div class="row-left"><div class="row-lim">Wait time after 3rd start attempt</div></div>
+          <div class="row-val">30<span class="unit">min</span></div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Starter Duty Cycle - Engine Motoring</span><span class="sub-count">3</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="cycle 1 45 sec on, 10 min off choose one of 3 cycles; can be repeated 3 times, then 30 min rest required">
+          <div class="row-left"><div class="row-lim">Cycle 1</div><div class="row-cond">Choose one of 3 cycles; can be repeated 3 times, then 30 min rest required</div></div>
+          <div class="row-val">45 sec on, 10 min off</div>
+        </div>
+<div class="row" data-s="cycle 2 30 sec on, 5 min off choose one of 3 cycles; can be repeated 3 times, then 30 min rest required">
+          <div class="row-left"><div class="row-lim">Cycle 2</div><div class="row-cond">Choose one of 3 cycles; can be repeated 3 times, then 30 min rest required</div></div>
+          <div class="row-val">30 sec on, 5 min off</div>
+        </div>
+<div class="row" data-s="cycle 3 15 sec on, 2 min off choose one of 3 cycles; can be repeated 3 times, then 30 min rest required">
+          <div class="row-left"><div class="row-lim">Cycle 3</div><div class="row-cond">Choose one of 3 cycles; can be repeated 3 times, then 30 min rest required</div></div>
+          <div class="row-val">15 sec on, 2 min off</div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+<div class="cat" data-cat="transmissions limitations">
+    <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-arrow">▶</span>
+      <span class="cat-title">Transmissions Limitations</span>
+      <span class="cat-count">10</span>
+      <span class="cat-ref">RFM 1-21</span>
+    </div>
+    <div class="cat-body">
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Torque (TQ %) - AEO, Airspeed ≤ 90 KIAS</span><span class="sub-count">4</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="maximum continuous 100 ">
+          <div class="row-left"><div class="row-lim">Maximum continuous</div></div>
+          <div class="row-val">100<span class="unit">TQ %</span></div>
+        </div>
+<div class="row" data-s="30 minutes take-off range 101 to 122 ">
+          <div class="row-left"><div class="row-lim">30 minutes Take-Off range</div></div>
+          <div class="row-val">101 to 122<span class="unit">TQ %</span></div>
+        </div>
+<div class="row" data-s="maximum 30 minutes 122 ">
+          <div class="row-left"><div class="row-lim">Maximum 30 minutes</div></div>
+          <div class="row-val">122<span class="unit">TQ %</span></div>
+        </div>
+<div class="row" data-s="transient (10 seconds) 132 ">
+          <div class="row-left"><div class="row-lim">Transient (10 seconds)</div></div>
+          <div class="row-val">132<span class="unit">TQ %</span></div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Torque (TQ %) - AEO, Airspeed &gt; 90 KIAS</span><span class="sub-count">2</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="maximum continuous 100 ">
+          <div class="row-left"><div class="row-lim">Maximum continuous</div></div>
+          <div class="row-val">100<span class="unit">TQ %</span></div>
+        </div>
+<div class="row" data-s="transient (10 seconds) 132 ">
+          <div class="row-left"><div class="row-lim">Transient (10 seconds)</div></div>
+          <div class="row-val">132<span class="unit">TQ %</span></div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Torque (TQ %) - One Engine Inoperative</span><span class="sub-count">4</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="maximum continuous 148 ">
+          <div class="row-left"><div class="row-lim">Maximum continuous</div></div>
+          <div class="row-val">148<span class="unit">TQ %</span></div>
+        </div>
+<div class="row" data-s="2.5 minute range 149 to 185 ">
+          <div class="row-left"><div class="row-lim">2.5 minute range</div></div>
+          <div class="row-val">149 to 185<span class="unit">TQ %</span></div>
+        </div>
+<div class="row" data-s="maximum 2.5 minutes 185 ">
+          <div class="row-left"><div class="row-lim">Maximum 2.5 minutes</div></div>
+          <div class="row-val">185<span class="unit">TQ %</span></div>
+        </div>
+<div class="row" data-s="transient (10 seconds) 195 ">
+          <div class="row-left"><div class="row-lim">Transient (10 seconds)</div></div>
+          <div class="row-val">195<span class="unit">TQ %</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+<div class="cat" data-cat="fuel system limitations">
+    <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-arrow">▶</span>
+      <span class="cat-title">Fuel System Limitations</span>
+      <span class="cat-count">3</span>
+      <span class="cat-ref">RFM 1-26</span>
+    </div>
+    <div class="cat-body">
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Unusable Fuel</span><span class="sub-count">3</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="unusable fuel in coordinated (ball centered) flight 0 10 litres per tank">
+          <div class="row-left"><div class="row-lim">Unusable fuel in coordinated (ball centered) flight</div><div class="row-cond">10 litres per tank</div></div>
+          <div class="row-val">0<span class="unit">kg indicated</span></div>
+        </div>
+<div class="row" data-s="unusable oei fuel (inoperative engine) &lt; 160 &lt; 200 litres — calculated with fuel density 0.8 kg/litre; caution below 200 l, avoid hover in crosswind/unbalanced flight, avoid abrupt manoeuvres">
+          <div class="row-left"><div class="row-lim">Unusable OEI fuel (inoperative engine)</div><div class="row-cond">&lt; 200 litres — calculated with fuel density 0.8 kg/litre; caution below 200 L, avoid hover in crosswind/unbalanced flight, avoid abrupt manoeuvres</div></div>
+          <div class="row-val">&lt; 160<span class="unit">kg</span></div>
+        </div>
+<div class="row" data-s="unusable oei fuel with fuel xfer system installed and used 0 &lt; 10 litres — ref supplement 39">
+          <div class="row-left"><div class="row-lim">Unusable OEI fuel with FUEL XFER SYSTEM installed and used</div><div class="row-cond">&lt; 10 litres — Ref Supplement 39</div></div>
+          <div class="row-val">0<span class="unit">kg indicated</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+<div class="cat" data-cat="rotor brake limitations">
+    <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-arrow">▶</span>
+      <span class="cat-title">Rotor Brake Limitations</span>
+      <span class="cat-count">5</span>
+      <span class="cat-ref">RFM 1-31</span>
+    </div>
+    <div class="cat-body">
+<div class="row" data-s="rotor brake application on ground only engine 1 off or accessory mode and engine 2 off">
+          <div class="row-left"><div class="row-lim">Rotor brake application</div><div class="row-cond">Engine 1 OFF or ACCESSORY mode and Engine 2 OFF</div></div>
+          <div class="row-val">ON GROUND only</div>
+        </div>
+<div class="row" data-s="maximum rotor speed for normal brake application 40 application above 40% only in an emergency">
+          <div class="row-left"><div class="row-lim">Maximum rotor speed for normal brake application</div><div class="row-cond">Application above 40% only in an emergency</div></div>
+          <div class="row-val">40<span class="unit">NR %</span></div>
+        </div>
+<div class="row" data-s="rapid turnaround rotor braking applications 4 in one hour minimum time between applications: 15 minutes">
+          <div class="row-left"><div class="row-lim">Rapid turnaround rotor braking applications</div><div class="row-cond">Minimum time between applications: 15 minutes</div></div>
+          <div class="row-val">4 in one hour</div>
+        </div>
+<div class="row" data-s="maximum rotor brake temperature on ground 449 ">
+          <div class="row-left"><div class="row-lim">Maximum rotor brake temperature on ground</div></div>
+          <div class="row-val">449<span class="unit">°C</span></div>
+        </div>
+<div class="row" data-s="maximum rotor brake temperature in flight 199 ">
+          <div class="row-left"><div class="row-lim">Maximum rotor brake temperature in flight</div></div>
+          <div class="row-val">199<span class="unit">°C</span></div>
+        </div>
+    </div>
+  </div>
+<div class="cat" data-cat="wheel brake limitations">
+    <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-arrow">▶</span>
+      <span class="cat-title">Wheel Brake Limitations</span>
+      <span class="cat-count">2</span>
+      <span class="cat-ref">RFM 1-31</span>
+    </div>
+    <div class="cat-body">
+<div class="row" data-s="maximum running speed for wheel brake application 40 ">
+          <div class="row-left"><div class="row-lim">Maximum running speed for wheel brake application</div></div>
+          <div class="row-val">40<span class="unit">kt</span></div>
+        </div>
+<div class="row" data-s="parking on dry and paved slopes up to 12° max 20 hours ">
+          <div class="row-left"><div class="row-lim">Parking on dry and paved slopes up to 12°</div></div>
+          <div class="row-val">Max 20 hours<span class="unit">hours</span></div>
+        </div>
+    </div>
+  </div>
+<div class="cat" data-cat="pitot heating limitations">
+    <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-arrow">▶</span>
+      <span class="cat-title">Pitot Heating Limitations</span>
+      <span class="cat-count">2</span>
+      <span class="cat-ref">RFM 1-31</span>
+    </div>
+    <div class="cat-body">
+<div class="row" data-s="pitot heating selection at indicated oat +4°c or less auto or on ">
+          <div class="row-left"><div class="row-lim">Pitot heating selection at indicated OAT +4°C or less</div></div>
+          <div class="row-val">AUTO or ON</div>
+        </div>
+<div class="row" data-s="pitot heating selection at indicated oat +5°c or more auto or off ">
+          <div class="row-left"><div class="row-lim">Pitot heating selection at indicated OAT +5°C or more</div></div>
+          <div class="row-val">AUTO or OFF</div>
+        </div>
+    </div>
+  </div>
+<div class="cat" data-cat="avionic limitations">
+    <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-arrow">▶</span>
+      <span class="cat-title">Avionic Limitations</span>
+      <span class="cat-count">31</span>
+      <span class="cat-ref">RFM 1-33 – 1-36</span>
+    </div>
+    <div class="cat-body">
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">AFCS Limitations</span><span class="sub-count">2</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="afcs upper modes must be disengaged (except hov, tdh, tu, coupled approach modes) if: see conditions one ap failed; one ahrs failed; adi-stdby failed; mra failed; tail rotor series actuator failed; cas message/audio attention getter lost; afcs oscillatory malfunction">
+          <div class="row-left"><div class="row-lim">AFCS upper modes must be disengaged (except HOV, TDH, TU, coupled approach modes) if:</div><div class="row-cond">One AP failed; one AHRS failed; ADI-STDBY failed; MRA failed; tail rotor series actuator failed; CAS message/audio attention getter lost; AFCS oscillatory malfunction</div></div>
+          <div class="row-val">See conditions</div>
+        </div>
+<div class="row" data-s="pwr lim caption displayed in flight caution fly attentive, reduce/increase power to keep power margin">
+          <div class="row-left"><div class="row-lim">PWR LIM caption displayed in flight</div><div class="row-cond">Fly attentive, reduce/increase power to keep power margin</div></div>
+          <div class="row-val">Caution</div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">AFCS Mode Limitations</span><span class="sub-count">3</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="rht, tu, tdh mode engagement flat surfaces clear of obstructions only ">
+          <div class="row-left"><div class="row-lim">RHT, TU, TDH mode engagement</div></div>
+          <div class="row-val">Flat surfaces clear of obstructions only</div>
+        </div>
+<div class="row" data-s="vnav, mot, wtr controls inoperative &quot;function unavl&quot; displayed on pfd if operated">
+          <div class="row-left"><div class="row-lim">VNAV, MOT, WTR controls</div><div class="row-cond">&quot;FUNCTION UNAVL&quot; displayed on PFD if operated</div></div>
+          <div class="row-val">Inoperative</div>
+        </div>
+<div class="row" data-s="td/tdh/tu modes without option file installed inoperative &quot;function unavl&quot; displayed on pfd">
+          <div class="row-left"><div class="row-lim">TD/TDH/TU modes without option file installed</div><div class="row-cond">&quot;FUNCTION UNAVL&quot; displayed on PFD</div></div>
+          <div class="row-val">Inoperative</div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">AFCS Modes - Envelope of Engagement &amp; MUH</span><span class="sub-count">16</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="alt 0 kias to vne muh: 200 ft agl cruise / 50 ft agl hover-low speed">
+          <div class="row-left"><div class="row-lim">ALT</div><div class="row-cond">MUH: 200 ft AGL cruise / 50 ft AGL hover-low speed</div></div>
+          <div class="row-val">0 KIAS to Vne</div>
+        </div>
+<div class="row" data-s="alta* 40 kias to vne muh: 200 ft agl. selectable vs datum -1500 to 2000 fpm; beyond limits reverts to max vs envelope">
+          <div class="row-left"><div class="row-lim">ALTA*</div><div class="row-cond">MUH: 200 ft AGL. Selectable VS datum -1500 to 2000 fpm; beyond limits reverts to max VS envelope</div></div>
+          <div class="row-val">40 KIAS to Vne</div>
+        </div>
+<div class="row" data-s="vs* 40 kias to vne muh: 200 ft agl (in descent). selectable vs datum -1500 to 2000 fpm; beyond limits reverts to max vs envelope">
+          <div class="row-left"><div class="row-lim">VS*</div><div class="row-cond">MUH: 200 ft AGL (in descent). Selectable VS datum -1500 to 2000 fpm; beyond limits reverts to max VS envelope</div></div>
+          <div class="row-val">40 KIAS to Vne</div>
+        </div>
+<div class="row" data-s="rht 0 kias to vne, 15 ft to 2050 ft agl muh: 150 ft agl cruise / 30 ft agl hover-low speed. selectable height datum 30-2000 ft; beyond limits reverts to max height envelope">
+          <div class="row-left"><div class="row-lim">RHT</div><div class="row-cond">MUH: 150 ft AGL cruise / 30 ft AGL hover-low speed. Selectable height datum 30-2000 ft; beyond limits reverts to max height envelope</div></div>
+          <div class="row-val">0 KIAS to Vne, 15 ft to 2050 ft AGL</div>
+        </div>
+<div class="row" data-s="ga 0 kias to 130 kias (up to 5000 ft, then -2kt/1000ft) muh: 150 ft agl cruise / 30 ft agl hover-low speed / 160 ft agl during approach">
+          <div class="row-left"><div class="row-lim">GA</div><div class="row-cond">MUH: 150 ft AGL cruise / 30 ft AGL hover-low speed / 160 ft AGL during approach</div></div>
+          <div class="row-val">0 KIAS to 130 KIAS (up to 5000 ft, then -2kt/1000ft)</div>
+        </div>
+<div class="row" data-s="td* 40 kias to vne above 200 ft; 75 kias to vne 150-200 ft agl muh: 150 ft agl">
+          <div class="row-left"><div class="row-lim">TD*</div><div class="row-cond">MUH: 150 ft AGL</div></div>
+          <div class="row-val">40 KIAS to Vne above 200 ft; 75 KIAS to Vne 150-200 ft AGL</div>
+        </div>
+<div class="row" data-s="tdh 0-75 kias 150-200 ft; 0-85 kias 30-150 ft agl muh: 30 ft agl">
+          <div class="row-left"><div class="row-lim">TDH</div><div class="row-cond">MUH: 30 ft AGL</div></div>
+          <div class="row-val">0-75 KIAS 150-200 ft; 0-85 KIAS 30-150 ft AGL</div>
+        </div>
+<div class="row" data-s="tu 0 kias to 80 kias, 10-200 ft agl muh: 30 ft agl">
+          <div class="row-left"><div class="row-lim">TU</div><div class="row-cond">MUH: 30 ft AGL</div></div>
+          <div class="row-val">0 KIAS to 80 KIAS, 10-200 ft AGL</div>
+        </div>
+<div class="row" data-s="gate 40-85 kias 200-225 ft agl; 75-85 kias 150-200 ft agl muh: 150 ft agl">
+          <div class="row-left"><div class="row-lim">GATE</div><div class="row-cond">MUH: 150 ft AGL</div></div>
+          <div class="row-val">40-85 KIAS 200-225 ft AGL; 75-85 KIAS 150-200 ft AGL</div>
+        </div>
+<div class="row" data-s="ias* 40 kias to vne muh: 150 ft agl cruise / 160 ft agl approach. selectable airspeed datum 45 to vne-5 kias; beyond limits reverts to max airspeed envelope">
+          <div class="row-left"><div class="row-lim">IAS*</div><div class="row-cond">MUH: 150 ft AGL cruise / 160 ft AGL approach. Selectable airspeed datum 45 to Vne-5 KIAS; beyond limits reverts to max airspeed envelope</div></div>
+          <div class="row-val">40 KIAS to Vne</div>
+        </div>
+<div class="row" data-s="gspd 30-220 kt gs, 40 kias to vne muh: 150 ft agl / 160 ft agl approach. aep logic intervenes if gs datum control results in airspeed &lt;vmini or &gt;vne-5kt">
+          <div class="row-left"><div class="row-lim">GSPD</div><div class="row-cond">MUH: 150 ft AGL / 160 ft AGL approach. AEP logic intervenes if GS datum control results in airspeed &lt;Vmini or &gt;Vne-5kt</div></div>
+          <div class="row-val">30-220 kt GS, 40 KIAS to Vne</div>
+        </div>
+<div class="row" data-s="dcl 85 kias to vne muh: 230 ft agl">
+          <div class="row-left"><div class="row-lim">DCL</div><div class="row-cond">MUH: 230 ft AGL</div></div>
+          <div class="row-val">85 KIAS to Vne</div>
+        </div>
+<div class="row" data-s="hov gs &lt;60 kt fwd / &lt;40 kt lateral-aft, airspeed &lt;80 kias muh: 30 ft agl">
+          <div class="row-left"><div class="row-lim">HOV</div><div class="row-cond">MUH: 30 ft AGL</div></div>
+          <div class="row-val">GS &lt;60 kt fwd / &lt;40 kt lateral-aft, airspeed &lt;80 KIAS</div>
+        </div>
+<div class="row" data-s="hdg* 0 kias to vne muh: 150 ft agl cruise / 30 ft agl hover-low speed / 160 ft agl approach">
+          <div class="row-left"><div class="row-lim">HDG*</div><div class="row-cond">MUH: 150 ft AGL cruise / 30 ft AGL hover-low speed / 160 ft AGL approach</div></div>
+          <div class="row-val">0 KIAS to Vne</div>
+        </div>
+<div class="row" data-s="nav* (nav, vor) 40 kias to vne muh: 150 ft agl / 160 ft agl approach">
+          <div class="row-left"><div class="row-lim">NAV* (NAV, VOR)</div><div class="row-cond">MUH: 150 ft AGL / 160 ft AGL approach</div></div>
+          <div class="row-val">40 KIAS to Vne</div>
+        </div>
+<div class="row" data-s="app* (vapp, loc, bc, gs, nloc, ngs, napp, ndcl) 40-130 kias (up to 5000 ft, then -2kt/1000ft) muh: 160 ft agl">
+          <div class="row-left"><div class="row-lim">APP* (VAPP, LOC, BC, GS, NLOC, NGS, NAPP, NDCL)</div><div class="row-cond">MUH: 160 ft AGL</div></div>
+          <div class="row-val">40-130 KIAS (up to 5000 ft, then -2kt/1000ft)</div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">AFCS Approach Modes Limitations</span><span class="sub-count">4</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="maximum rate of descent (rod) 900 ">
+          <div class="row-left"><div class="row-lim">Maximum Rate of Descent (ROD)</div></div>
+          <div class="row-val">900<span class="unit">fpm</span></div>
+        </div>
+<div class="row" data-s="maximum airspeed for afcs coupled approach 130 (up to 5000 ft, then -2kt/1000ft) ">
+          <div class="row-left"><div class="row-lim">Maximum airspeed for AFCS coupled approach</div></div>
+          <div class="row-val">130 (up to 5000 ft, then -2kt/1000ft)<span class="unit">KIAS</span></div>
+        </div>
+<div class="row" data-s="ias mode requirement below 50 kias uncoupled on pitch axis ias mode must be engaged ">
+          <div class="row-left"><div class="row-lim">IAS mode requirement below 50 KIAS uncoupled on pitch axis</div></div>
+          <div class="row-val">IAS mode must be engaged</div>
+        </div>
+<div class="row" data-s="certified cat i ils approach glideslope up to 7 ">
+          <div class="row-left"><div class="row-lim">Certified CAT I ILS approach glideslope</div></div>
+          <div class="row-val">Up to 7<span class="unit">deg</span></div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">FMS Limitations</span><span class="sub-count">6</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="navigation data base (nav db) currency and coherence pilot must verify verify currency of on-board nav db and coherence with procedure to be flown">
+          <div class="row-left"><div class="row-lim">Navigation Data Base (NAV DB) currency and coherence</div><div class="row-cond">Verify currency of on-board NAV DB and coherence with procedure to be flown</div></div>
+          <div class="row-val">Pilot must verify</div>
+        </div>
+<div class="row" data-s="approved radio navigation equipment required must be installed and operating appropriate to route of flight">
+          <div class="row-left"><div class="row-lim">Approved radio navigation equipment</div><div class="row-cond">Must be installed and operating appropriate to route of flight</div></div>
+          <div class="row-val">Required</div>
+        </div>
+<div class="row" data-s="manual fms reversion to dme/dme or vor/dme prohibited fms is not multi-sensor approved for navigation">
+          <div class="row-left"><div class="row-lim">Manual FMS reversion to DME/DME or VOR/DME</div><div class="row-cond">FMS is not Multi-Sensor Approved for navigation</div></div>
+          <div class="row-val prohibited">PROHIBITED</div>
+        </div>
+<div class="row" data-s="fms use for navigation after dual gnss failure/outage with automatic reversion to dme/dme or vor/dme prohibited pilot must revert to radio navigation">
+          <div class="row-left"><div class="row-lim">FMS use for Navigation after dual GNSS failure/outage with automatic reversion to DME/DME or VOR/DME</div><div class="row-cond">Pilot must revert to Radio Navigation</div></div>
+          <div class="row-val prohibited">PROHIBITED</div>
+        </div>
+<div class="row" data-s="predictive raim check when out of sbas coverage or sbas outage required check on gps pred-raim edcu page for destination waypoint">
+          <div class="row-left"><div class="row-lim">Predictive RAIM check when out of SBAS coverage or SBAS outage</div><div class="row-cond">Check on GPS PRED-RAIM EDCU page for destination waypoint</div></div>
+          <div class="row-val">Required</div>
+        </div>
+<div class="row" data-s="maximum rate of descent (rod) during coupled fms approaches 800 ">
+          <div class="row-left"><div class="row-lim">Maximum Rate of Descent (ROD) during coupled FMS approaches</div></div>
+          <div class="row-val">800<span class="unit">fpm</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+<div class="cat" data-cat="miscellaneous limitations">
+    <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-arrow">▶</span>
+      <span class="cat-title">Miscellaneous Limitations</span>
+      <span class="cat-count">7</span>
+      <span class="cat-ref">RFM 1-37</span>
+    </div>
+    <div class="cat-body">
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Baggage Compartment Limitations</span><span class="sub-count">4</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="maximum baggage compartment load 250 (550 lb) requires baggage liners installed; all cargo secured with approved net or other approved means">
+          <div class="row-left"><div class="row-lim">Maximum baggage compartment load</div><div class="row-cond">Requires baggage liners installed; all cargo secured with approved net or other approved means</div></div>
+          <div class="row-val">250 (550 lb)<span class="unit">kg (lb)</span></div>
+        </div>
+<div class="row" data-s="maximum unit load 450 (92 lb/sq ft) ">
+          <div class="row-left"><div class="row-lim">Maximum unit load</div></div>
+          <div class="row-val">450 (92 lb/sq ft)<span class="unit">kg/m²</span></div>
+        </div>
+<div class="row" data-s="maximum cargo height 600 (2 ft) ">
+          <div class="row-left"><div class="row-lim">Maximum cargo height</div></div>
+          <div class="row-val">600 (2 ft)<span class="unit">mm (ft)</span></div>
+        </div>
+<div class="row" data-s="carriage of dangerous goods prohibited ">
+          <div class="row-left"><div class="row-lim">Carriage of dangerous goods</div></div>
+          <div class="row-val prohibited">PROHIBITED</div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Baggage Compartment Extension (P/N 6F2580F01111)</span><span class="sub-count">2</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="load on baggage cabin extension floor none allowed if extension installed">
+          <div class="row-left"><div class="row-lim">Load on baggage cabin extension floor</div><div class="row-cond">If extension installed</div></div>
+          <div class="row-val prohibited">NONE ALLOWED</div>
+        </div>
+<div class="row" data-s="total weight of long objects protruding in extension area max 50 (110 lb) long objects must be secured to main baggage floor">
+          <div class="row-left"><div class="row-lim">Total weight of long objects protruding in extension area</div><div class="row-cond">Long objects must be secured to main baggage floor</div></div>
+          <div class="row-val">Max 50 (110 lb)<span class="unit">kg (lb)</span></div>
+        </div></div>
+      </div>
+<div class="sub">
+        <div class="sub-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+          <span class="sub-arrow">▶</span><span class="sub-title">Cabin Compartment Limitations</span><span class="sub-count">1</span>
+        </div>
+        <div class="sub-body"><div class="row" data-s="cargo transport in the cabin prohibited unless an approved cabin configuration for cargo transport is installed">
+          <div class="row-left"><div class="row-lim">Cargo transport in the cabin</div><div class="row-cond">Unless an approved cabin configuration for cargo transport is installed</div></div>
+          <div class="row-val prohibited">PROHIBITED</div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="no-results" id="no-results">No limitations match the search.</div>
+</div>
+<script>
+let allOpen = false;
+function toggleAll() {
+  allOpen = !allOpen;
+  document.querySelectorAll('.cat').forEach(c => c.classList.toggle('open', allOpen));
+  document.querySelectorAll('.sub').forEach(s => s.classList.toggle('open', allOpen));
+  document.getElementById('expall').textContent = allOpen ? 'Collapse all' : 'Expand all';
+}
+function doSearch() {
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  let anyVisible = false;
+  document.querySelectorAll('.cat').forEach(cat => {
+    let catHit = false;
+    const catMatch = q && cat.dataset.cat.includes(q);
+    cat.querySelectorAll('.row').forEach(row => {
+      const hit = !q || catMatch || row.dataset.s.includes(q);
+      row.classList.toggle('hidden', !hit);
+      if (hit) catHit = true;
+    });
+    cat.querySelectorAll('.sub').forEach(sub => {
+      const subVisible = [...sub.querySelectorAll('.row')].some(r => !r.classList.contains('hidden'));
+      sub.classList.toggle('hidden', !subVisible);
+      if (q && subVisible) sub.classList.add('open');
+      if (!q) sub.classList.remove('open');
+    });
+    cat.classList.toggle('hidden', !catHit);
+    if (q && catHit) cat.classList.add('open');
+    if (!q) cat.classList.remove('open');
+    if (catHit) anyVisible = true;
+  });
+  document.getElementById('no-results').style.display = anyVisible ? 'none' : 'block';
+  if (!q) { allOpen = false; document.getElementById('expall').textContent = 'Expand all'; }
+}
+</script>
+</body>
+</html>
