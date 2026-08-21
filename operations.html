@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AW169 — Operational Information &amp; Limitations</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0b0e14;--surface:#11151d;--surface2:#151a24;--border:#252c3b;
+    --accent:#e8a020;--accent2:#4ea8de;--text:#c9d2e0;--muted:#5c6778;
+    --white:#f0f4fa;--danger:#e05252;--ok:#52c07a;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;padding:30px 14px 70px;
+    background-image:linear-gradient(rgba(37,44,59,.25) 1px,transparent 1px),linear-gradient(90deg,rgba(37,44,59,.25) 1px,transparent 1px);
+    background-size:32px 32px;}
+  .page{max-width:900px;margin:0 auto;}
+  header{display:flex;align-items:flex-start;gap:16px;margin-bottom:22px;flex-wrap:wrap;}
+  .logo-block h1{font-family:'Bebas Neue',sans-serif;font-size:46px;letter-spacing:2px;color:var(--white);line-height:.95;}
+  .logo-block h1 span{color:var(--accent);}
+  .logo-block p{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:6px;}
+  .rev{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--accent2);margin-top:4px;}
+  .header-right{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+  .header-badge{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent);border:1px solid var(--accent);padding:4px 10px;border-radius:2px;letter-spacing:1px;}
+  .back-link{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-decoration:none;letter-spacing:1px;transition:color .15s;}
+  .back-link:hover{color:var(--accent);}
+
+  .searchbar{display:flex;gap:10px;margin-bottom:14px;position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 0;}
+  .searchbar input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:11px 14px;
+    color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:12px;}
+  .searchbar input:focus{outline:none;border-color:var(--accent2);}
+  .searchbar input::placeholder{color:var(--muted);}
+  .exp-btn{background:none;border:1px solid var(--border);border-radius:3px;color:var(--muted);
+    font-family:'IBM Plex Mono',monospace;font-size:10px;padding:0 14px;cursor:pointer;letter-spacing:1px;transition:all .15s;}
+  .exp-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+  .chip{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;padding:6px 12px;border-radius:3px;
+    border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--accent2);color:var(--accent2);}
+  .chip.on{border-color:var(--accent);color:var(--accent);background:rgba(232,160,32,.08);}
+
+  .cat{background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:10px;overflow:hidden;}
+  .cat-head{display:flex;align-items:center;gap:11px;padding:13px 15px;cursor:pointer;user-select:none;flex-wrap:wrap;}
+  .cat-head:hover{background:var(--surface2);}
+  .arw{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent);transition:transform .15s;}
+  .cat.open .arw{transform:rotate(90deg);}
+  .cat-t{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--white);flex:1;}
+  .cat-n{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);}
+  .cat-b{display:none;border-top:1px solid var(--border);}
+  .cat.open .cat-b{display:block;}
+
+  table{width:100%;border-collapse:collapse;}
+  th{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;
+    color:var(--muted);text-align:left;padding:9px 14px;border-bottom:1px solid var(--border);font-weight:400;}
+  th.r,td.r{text-align:right;}
+  td{padding:10px 14px;font-size:12.5px;border-bottom:1px solid rgba(37,44,59,.5);vertical-align:top;line-height:1.45;}
+  tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:rgba(37,44,59,.25);}
+  .cond{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--muted);display:block;margin-top:3px;line-height:1.55;}
+  .ghead td{background:rgba(37,44,59,.35);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;
+    text-transform:uppercase;color:var(--accent2);padding:7px 14px;}
+  .v{font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--accent);white-space:nowrap;}
+  .v.dim{color:var(--muted);font-weight:400;white-space:normal;}
+  .v.no{color:var(--danger);}
+  .u{font-size:9px;color:var(--muted);font-weight:400;margin-left:2px;}
+  .src{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.5px;padding:1px 5px;border-radius:2px;
+    white-space:nowrap;border:1px solid;}
+  .src.a{color:var(--accent2);border-color:rgba(78,168,222,.5);}
+  .src.h{color:var(--accent);border-color:rgba(232,160,32,.5);}
+
+  .row{display:flex;justify-content:space-between;gap:16px;padding:11px 14px;border-bottom:1px solid rgba(37,44,59,.5);}
+  .row:last-child{border-bottom:none;}
+  .row:hover{background:rgba(37,44,59,.25);}
+  .row-left{flex:1;min-width:0;}
+  .row-lim{font-size:12.5px;color:var(--text);line-height:1.45;}
+  .row-val{font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;color:var(--accent);text-align:right;max-width:46%;}
+  .row-val .u{font-size:9px;}
+  .row-val.no{color:var(--danger);}
+  .sub-h{padding:9px 14px;background:rgba(37,44,59,.28);border-bottom:1px solid var(--border);
+    font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent2);}
+  tr.hide,.cat.hide,.row.hide{display:none;}
+  .no-results{display:none;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);text-align:center;padding:30px;}
+
+  .tags{white-space:nowrap;width:1%;}
+  .tg{font-family:'IBM Plex Mono',monospace;font-size:7.5px;letter-spacing:.5px;padding:1px 4px;border-radius:2px;
+    border:1px solid;margin-right:3px;display:inline-block;}
+  .t-all{color:var(--muted);border-color:var(--border);}
+  .t-vfr{color:var(--ok);border-color:rgba(82,192,122,.45);}
+  .t-ifr{color:var(--accent2);border-color:rgba(78,168,222,.45);}
+  .t-off{color:var(--accent);border-color:rgba(232,160,32,.45);}
+  .t-hho{color:#c07ae0;border-color:rgba(192,122,224,.45);}
+  .t-nvis{color:#52c0b0;border-color:rgba(82,192,176,.45);}
+  .t-pol{color:#7a9ce0;border-color:rgba(122,156,224,.45);}
+  .t-ara{color:#e0a87a;border-color:rgba(224,168,122,.45);}
+  @media(max-width:620px){ .tags{width:auto;} td{padding:9px 10px;font-size:12px;} }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="logo-block">
+      <h1>AW<span>169</span></h1>
+      <p>Operational Information &amp; Limitations</p>
+      <div class="rev">OM Part A AMD 32 · OM Part H AMD 12 · Two-pilot operations</div>
+    </div>
+    <div class="header-right">
+      <div class="header-badge">OPS TOOL</div>
+      <a href="index.html" class="back-link">← Back</a>
+    </div>
+  </header>
+
+  <div class="searchbar">
+    <input type="text" id="search" placeholder="Search minima, limits, procedures…" oninput="doSearch()">
+    <button class="exp-btn" id="expall" onclick="toggleAll()">Expand all</button>
+  </div>
+
+  <div class="chips">
+    <button class="chip on" onclick="fil('all',this)">All operations</button>
+    <button class="chip" onclick="fil('vfr',this)">VFR</button>
+    <button class="chip" onclick="fil('ifr',this)">IFR</button>
+    <button class="chip" onclick="fil('offshore',this)">Offshore</button>
+    <button class="chip" onclick="fil('hho',this)">HHO / SAR</button>
+    <button class="chip" onclick="fil('nvis',this)">NVIS</button>
+    <button class="chip" onclick="fil('police',this)">Police</button>
+    <button class="chip" onclick="fil('ara',this)">ARA</button>
+  </div>
+
+<!-- ══════════ WEATHER MINIMA — MASTER MATRIX ══════════ -->
+<div class="cat open" data-cat="weather minima operating minima vfr ifr ara">
+  <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="arw">▶</span><span class="cat-t">Weather Minima</span><span class="cat-n">operating minima</span>
+  </div>
+  <div class="cat-b">
+    
+    <table>
+      <thead><tr><th>Operation / condition</th><th class="r">Visibility</th><th class="r">Ceiling / cloud</th><th class="r">Source</th></tr></thead>
+      <tbody>
+        <tr class="ghead"><td colspan="4">VFR — onshore</td></tr>
+        <tr data-f="vfr"><td>Class C/D/E/F, and G above 3000 ft AMSL or 1000 ft AGL</td><td class="r"><span class="v">5<span class="u">km</span></span></td><td class="r"><span class="v">1500 m<span class="u">horiz</span> / 1000<span class="u">ft vert</span></span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="vfr"><td>Class G at or below 3000 ft AMSL / 1000 ft AGL</td><td class="r"><span class="v">5<span class="u">km</span></span></td><td class="r"><span class="v dim">Clear of cloud, in sight of surface</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="vfr"><td>Day at or below 1000 ft AGL, low traffic probability<span class="cond">IAS ≤ 140 kt</span></td><td class="r"><span class="v">800<span class="u">m</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="vfr"><td>Special VFR<span class="cond">Reduced speed</span></td><td class="r"><span class="v">800<span class="u">m</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="vfr"><td>Night VFR — general<span class="cond">Min alt 500 ft, 1000 ft over congested area · flights beyond 50 NM need en-route and destination weather if ceiling below 2000 ft or visibility below 10 km</span></td><td class="r"><span class="v">5<span class="u">km</span></span></td><td class="r"><span class="v">600<span class="u">ft</span></span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+
+        <tr class="ghead"><td colspan="4">Overwater — out of sight of land</td></tr>
+        <tr data-f="vfr"><td>Day — general</td><td class="r"><span class="v">1500<span class="u">m</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="vfr"><td>Night — general</td><td class="r"><span class="v">5<span class="u">km</span></span></td><td class="r"><span class="v">1200<span class="u">ft</span></span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="hho"><td>Hoist / multi-purpose task — day<span class="cond">In sight of land, visibility may reduce to 800 m for short periods by day at a speed giving adequate opportunity to see and avoid</span></td><td class="r"><span class="v">1500<span class="u">m</span></span></td><td class="r"><span class="v">600<span class="u">ft</span></span></td><td class="r"><span class="src h">OM-H A.2</span></td></tr>
+        <tr data-f="hho"><td>Hoist / multi-purpose task — night unaided</td><td class="r"><span class="v">5000<span class="u">m</span></span></td><td class="r"><span class="v">1200<span class="u">ft</span></span></td><td class="r"><span class="src h">OM-H A.2</span></td></tr>
+        <tr data-f="hho nvis"><td>Hoist / multi-purpose task — night NVG</td><td class="r"><span class="v">3000<span class="u">m</span></span></td><td class="r"><span class="v">1200<span class="u">ft</span></span></td><td class="r"><span class="src h">OM-H A.2</span></td></tr>
+
+        <tr class="ghead"><td colspan="4">Offshore — helideck operations</td></tr>
+        <tr data-f="offshore vfr"><td>To / from offshore helideck, out of sight of land — day<span class="cond">Landing and take-off from a helideck clear above fog only if 35 ft clearance from the sea is guaranteed OEI</span></td><td class="r"><span class="v">1500<span class="u">m</span></span></td><td class="r"><span class="v">600<span class="u">ft</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+        <tr data-f="offshore vfr"><td>To / from offshore helideck, out of sight of land — night</td><td class="r"><span class="v">5<span class="u">km</span></span></td><td class="r"><span class="v">1200<span class="u">ft</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+        <tr data-f="offshore vfr"><td>Shuttle between helidecks, sector under 10 NM — day<span class="cond">May reduce to 800 m provided destination or an intermediate structure is continuously visible</span></td><td class="r"><span class="v">2<span class="u">km</span></span></td><td class="r"><span class="v">300<span class="u">ft</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+        <tr data-f="offshore vfr"><td>Shuttle between helidecks, sector under 10 NM — night<span class="cond">May reduce to 1500 m provided destination or an intermediate structure is continuously visible</span></td><td class="r"><span class="v">5<span class="u">km</span></span></td><td class="r"><span class="v">500<span class="u">ft</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+        <tr data-f="offshore ifr"><td>IFR between offshore helidecks — day<span class="cond">Requires onshore alternate specified</span></td><td class="r"><span class="v">800<span class="u">m</span></span></td><td class="r"><span class="v">200<span class="u">ft</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+        <tr data-f="offshore ifr"><td>IFR between offshore helidecks — night<span class="cond">Requires onshore alternate specified</span></td><td class="r"><span class="v">1200<span class="u">m</span></span></td><td class="r"><span class="v">300<span class="u">ft</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+        <tr data-f="offshore"><td>En-route descent offshore (cloud break)<span class="cond">If at 500 ft and ship or rig not visual from 2 NM, climb to safe altitude · weather radar operative, sector clear of obstructions</span></td><td class="r"><span class="v">5000<span class="u">m day &amp; night</span></span></td><td class="r"><span class="v">600 day / 1200 night<span class="u">ft</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+
+        <tr class="ghead"><td colspan="4">Airborne radar approach — offshore</td></tr>
+        <tr data-f="offshore ifr ara"><td>ARA day — standard<span class="cond">MDH never less than 50 ft above helideck elevation</span></td><td class="r"><span class="v">800<span class="u">m</span></span></td><td class="r"><span class="v">200<span class="u">ft MDH</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+        <tr data-f="offshore ifr ara"><td>ARA day — circling</td><td class="r"><span class="v">800<span class="u">m</span></span></td><td class="r"><span class="v">300<span class="u">ft MDH</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+        <tr data-f="offshore ifr ara"><td>ARA night — standard</td><td class="r"><span class="v">1200<span class="u">m</span></span></td><td class="r"><span class="v">300<span class="u">ft MDH</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+        <tr data-f="offshore ifr ara"><td>ARA night — circling</td><td class="r"><span class="v">1200<span class="u">m</span></span></td><td class="r"><span class="v">500<span class="u">ft MDH</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+        <tr data-f="offshore ifr ara"><td>Decision range — ARA</td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="v">≥ 0.75<span class="u">NM</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+
+        <tr class="ghead"><td colspan="4">Landfall airborne radar approach (LF-ARA)</td></tr>
+        <tr data-f="ifr ara"><td>LF-ARA day — standard<span class="cond">MDH is landing site + 50 ft, minimum 200 ft radalt · descend to reach MDH no later than 2 NM to the pre-determined point, reduce to 60 kt GS</span></td><td class="r"><span class="v">800<span class="u">m</span></span></td><td class="r"><span class="v">200<span class="u">ft radalt</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+        <tr data-f="ifr ara"><td>LF-ARA night — standard<span class="cond">MDH is landing site + 50 ft, minimum 300 ft radalt</span></td><td class="r"><span class="v">1200<span class="u">m</span></span></td><td class="r"><span class="v">300<span class="u">ft radalt</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+        <tr data-f="ifr ara"><td>LF-ARA — circling<span class="cond">Required if approach direction does not correspond with landing direction within 15° · TAWS on screen highly recommended</span></td><td class="r"><span class="v">800<span class="u">m</span></span></td><td class="r"><span class="v">250<span class="u">ft MDH</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+        <tr data-f="ifr ara"><td>Decision range — LF-ARA<span class="cond">May only proceed beyond decision range if the pre-determined point is clearly identified and weather permits visual continuation to the landing site</span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="v">≥ 1.0<span class="u">NM</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+
+        <tr class="ghead"><td colspan="4">IFR — onshore approach</td></tr>
+        <tr data-f="ifr"><td>CAT I approach — lowest</td><td class="r"><span class="v">500<span class="u">m RVR</span></span></td><td class="r"><span class="v">200<span class="u">ft DH</span></span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="ifr"><td>2D approach — floor</td><td class="r"><span class="v">800<span class="u">m</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="ifr"><td>RVR below 800 m<span class="cond">Permitted only with autopilot-coupled ILS / MLS / GLS / LPV</span></td><td class="r"><span class="v">800<span class="u">m</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="ifr"><td>Approach ban<span class="cond">No continuation past 1000 ft above aerodrome elevation</span></td><td class="r"><span class="v no">&lt; 550<span class="u">m RVR</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="ifr"><td>Visual contact approach</td><td class="r"><span class="v">≥ 800<span class="u">m RVR</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+
+        <tr class="ghead"><td colspan="4">Take-off minima — IFR</td></tr>
+        <tr data-f="ifr"><td>Two-pilot operations</td><td class="r"><span class="v">400<span class="u">m</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="ifr"><td>Runway edge / FATO lighting and centreline marking</td><td class="r"><span class="v">400<span class="u">m</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="ifr"><td>No lighting and no markings — day only</td><td class="r"><span class="v">400<span class="u">m</span><span class="cond">Or the rejected take-off distance, whichever is greater</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="ifr"><td>No markings — night</td><td class="r"><span class="v">800<span class="u">m</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="ifr"><td>Onshore aerodrome or helipad without IFR departure procedure</td><td class="r"><span class="v">800<span class="u">m</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="ifr offshore"><td>Offshore helideck</td><td class="r"><span class="v dim">Take-off path to be free of obstacles</span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="ifr"><td>Performance Class 3 — departure</td><td class="r"><span class="v">800<span class="u">m</span></span></td><td class="r"><span class="v">600<span class="u">ft</span></span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+
+        <tr class="ghead"><td colspan="4">NVIS</td></tr>
+        <tr data-f="nvis"><td>Dispatch minima<span class="cond">Both pilots shall wear NVG · radio altimeter must be operational</span></td><td class="r"><span class="v">3<span class="u">km</span></span></td><td class="r"><span class="v">1200<span class="u">ft</span></span></td><td class="r"><span class="src h">OM-H A.1</span></td></tr>
+        <tr data-f="nvis"><td>Police operations — NVIS</td><td class="r"><span class="v">5<span class="u">km</span></span></td><td class="r"><span class="v">1200<span class="u">ft</span></span></td><td class="r"><span class="src h">OM-H H.1</span></td></tr>
+
+        <tr class="ghead"><td colspan="4">Alternate planning minima</td></tr>
+        <tr data-f="ifr"><td>Destination alternate<span class="cond">Applied to the promulgated minima · ETA ±1 h</span></td><td class="r"><span class="v">+400<span class="u">m</span></span></td><td class="r"><span class="v">+200<span class="u">ft on (M)DA</span></span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="ifr"><td>Take-off alternate<span class="cond">Within 1 h at normal cruise · ETA ±1 h</span></td><td class="r"><span class="v">+400<span class="u">m RVR</span></span></td><td class="r"><span class="v">+200<span class="u">ft ceiling</span></span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="ifr"><td>No alternate required<span class="cond">Ceiling and visibility from ETA −2 h to +2 h · two independent instrument approach procedures required · add 15 min fuel</span></td><td class="r"><span class="v">≥ 3000<span class="u">m</span></span></td><td class="r"><span class="v">≥ 400<span class="u">ft above DA/MDA</span></span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="offshore ifr"><td>Offshore alternate — day<span class="cond">No fog forecast within 60 NM · point of no return no more than 30 min from destination · OEI in-ground-effect hover capability required</span></td><td class="r"><span class="v">4<span class="u">km</span></span></td><td class="r"><span class="v">600<span class="u">ft</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+        <tr data-f="offshore ifr"><td>Offshore alternate — night</td><td class="r"><span class="v">5<span class="u">km</span></span></td><td class="r"><span class="v">800<span class="u">ft</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
+        <tr data-f="hho"><td>Alternate may be omitted<span class="cond">Flight time under 3 h · ETA ±1 h · ceiling at least 1000 ft or obstacle clearance limit + 700 ft, whichever is higher</span></td><td class="r"><span class="v">≥ 2500<span class="u">m</span></span></td><td class="r"><span class="v">≥ 1000<span class="u">ft</span></span></td><td class="r"><span class="src h">OM-H A.2</span></td></tr>
+
+        <tr class="ghead"><td colspan="4">Local restriction</td></tr>
+        <tr data-f="hho nvis"><td>Hammerfest — night, winter<span class="cond">No missions 2300–0700, 1 Nov – 21 Mar · ATC must be open if snow showers in TAF</span></td><td class="r"><span class="v">7<span class="u">km</span></span></td><td class="r"><span class="v">1500<span class="u">ft</span></span></td><td class="r"><span class="src h">OM-H A.2</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cat" data-cat="radalt radio altimeter bug decision height">
+  <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="arw">▶</span><span class="cat-t">Radio Altimeter Settings</span><span class="cat-n">bug settings & heights</span>
+  </div>
+  <div class="cat-b"><table>
+    <thead><tr><th>Item / condition</th><th>Applies to</th><th class="r">Value</th></tr></thead>
+    <tbody>
+<tr data-f="nvis"><td>Bug setting</td><td class="tags"><span class="tg t-nvis">NVIS</span></td><td class="r"><span class="v">150<span class="u">ft</span></span></td></tr>
+<tr data-f="police"><td>Decision height, en-route</td><td class="tags"><span class="tg t-pol">POLICE</span></td><td class="r"><span class="v">500<span class="u">ft</span></span></td></tr>
+<tr data-f="police"><td>Bug setting, approach and departure</td><td class="tags"><span class="tg t-pol">POLICE</span></td><td class="r"><span class="v">LDP+50 / TDP+50<span class="u">ft</span></span></td></tr>
+<tr data-f="ara"><td>Minimum descent height determined by radio altimeter<span class="cond">MDH shall not be less than 50 ft above the elevation of the helideck</span></td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">—</span></td></tr>
+<tr data-f="offshore"><td>Altitudes at or below 1000 ft are height, referred to radio altimeter</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">≤ 1000<span class="u">ft</span></span></td></tr>
+<tr data-f="offshore ifr"><td>Below 1000 ft — fly radio altimeter</td><td class="tags"><span class="tg t-off">OFFSHORE</span><span class="tg t-ifr">IFR</span></td><td class="r"><span class="v">&lt; 1000<span class="u">ft</span></span></td></tr>
+<tr data-f="ara"><td>Cross-check barometric against radio altimeter and call "1000ft RA"</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">1000<span class="u">ft RA</span></span></td></tr>
+<tr data-f="offshore"><td>Bugs operative and set in accordance with OM-A<span class="cond">En-route descent offshore (cloud break)</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">Required</span></td></tr>
+<tr data-f="nvis"><td>Must be operational</td><td class="tags"><span class="tg t-nvis">NVIS</span></td><td class="r"><span class="v">Required</span></td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="cat" data-cat="altitude height moca mora transition">
+  <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="arw">▶</span><span class="cat-t">Heights &amp; Minimum Altitudes</span><span class="cat-n">en-route, transition & approach</span>
+  </div>
+  <div class="cat-b"><table>
+    <thead><tr><th>Item / condition</th><th>Applies to</th><th class="r">Value</th></tr></thead>
+    <tbody>
+<tr data-f="all"><td>MOCA — highest obstacle within 10 NM either side of track<span class="cond">Segments ≤ 100 NM · ≤6000 ft / &gt;6000 ft · rounded up to next 100 ft</span></td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">+1000 / +2000<span class="u">ft</span></span></td></tr>
+<tr data-f="all"><td>MORA — per latitude/longitude square</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">+1000 / +2000<span class="u">ft</span></span></td></tr>
+<tr data-f="all"><td>Additive for wind above 30 kt, per 10 kt</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">+500<span class="u">ft, max +2000</span></span></td></tr>
+<tr data-f="all"><td>Standard pressure setting correction, per hPa below 1013</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">+30<span class="u">ft</span></span></td></tr>
+<tr data-f="vfr"><td>Minimum en-route altitude, night VFR<span class="cond">1000 ft over congested area</span></td><td class="tags"><span class="tg t-vfr">VFR</span></td><td class="r"><span class="v">500 / 1000<span class="u">ft</span></span></td></tr>
+<tr data-f="offshore ifr"><td>Minimum IFR cruise altitude offshore<span class="cond">1000 ft permitted with radar and 5 NM obstacle clearance</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span><span class="tg t-ifr">IFR</span></td><td class="r"><span class="v">1500<span class="u">ft</span></span></td></tr>
+<tr data-f="nvis"><td>Transition height to and from aided flight — general</td><td class="tags"><span class="tg t-nvis">NVIS</span></td><td class="r"><span class="v">500<span class="u">ft AGL</span></span></td></tr>
+<tr data-f="nvis"><td>Transition height to and from aided flight — to ship</td><td class="tags"><span class="tg t-nvis">NVIS</span></td><td class="r"><span class="v">150<span class="u">ft</span></span></td></tr>
+<tr data-f="nvis"><td>Recommended en-route height</td><td class="tags"><span class="tg t-nvis">NVIS</span></td><td class="r"><span class="v">500<span class="u">ft</span></span></td></tr>
+<tr data-f="nvis"><td>Recommended search height</td><td class="tags"><span class="tg t-nvis">NVIS</span></td><td class="r"><span class="v">200<span class="u">ft</span></span></td></tr>
+<tr data-f="nvis"><td>Departure from high hover, to ship</td><td class="tags"><span class="tg t-nvis">NVIS</span></td><td class="r"><span class="v">&gt; 150<span class="u">ft</span></span></td></tr>
+<tr data-f="police"><td>Reconnaissance required before descending below</td><td class="tags"><span class="tg t-pol">POLICE</span></td><td class="r"><span class="v">500<span class="u">ft</span></span></td></tr>
+<tr data-f="offshore"><td>Visual approach gate</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">500<span class="u">ft AGL / 1.5 NM</span></span></td></tr>
+<tr data-f="offshore"><td>Climb to safe altitude if ship or rig not visual from 2 NM<span class="cond">En-route descent offshore (cloud break)</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">500<span class="u">ft</span></span></td></tr>
+<tr data-f="ara"><td>Missed approach climb</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">1000<span class="u">ft</span></span></td></tr>
+<tr data-f="ara"><td>Missed approach climb to MSA<span class="cond">Offshore missed approach</span></td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">1500<span class="u">ft</span></span></td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="cat" data-cat="speed airspeed groundspeed kias vy">
+  <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="arw">▶</span><span class="cat-t">Speeds</span><span class="cat-n">airspeed & groundspeed</span>
+  </div>
+  <div class="cat-b"><table>
+    <thead><tr><th>Item / condition</th><th>Applies to</th><th class="r">Value</th></tr></thead>
+    <tbody>
+<tr data-f="all"><td>Flight visibility 1.5 km — maximum groundspeed</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">90<span class="u">kt GS</span></span></td></tr>
+<tr data-f="all"><td>Flight visibility 1.2 km — maximum groundspeed</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">80<span class="u">kt GS</span></span></td></tr>
+<tr data-f="all"><td>Flight visibility 1.0 km — maximum groundspeed</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">70<span class="u">kt GS</span></span></td></tr>
+<tr data-f="all"><td>Flight visibility 800 m — maximum groundspeed<span class="cond">Never below V<sub>TOSS</sub></span></td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">60<span class="u">kt GS</span></span></td></tr>
+<tr data-f="vfr"><td>Day at or below 1000 ft AGL, low traffic probability</td><td class="tags"><span class="tg t-vfr">VFR</span></td><td class="r"><span class="v">≤ 140<span class="u">KIAS</span></span></td></tr>
+<tr data-f="hho"><td>Maximum airspeed for hoisting<span class="cond">RFM limit</span></td><td class="tags"><span class="tg t-hho">HHO</span></td><td class="r"><span class="v">45<span class="u">kt</span></span></td></tr>
+<tr data-f="ara"><td>From initial point or initial fix<span class="cond">Maximum 70 kt groundspeed plus vessel speed if applicable</span></td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">60–90<span class="u">KIAS</span></span></td></tr>
+<tr data-f="ara"><td>Reduce speed by 2 NM to the pre-determined point<span class="cond">Landfall ARA</span></td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">60<span class="u">kt GS</span></span></td></tr>
+<tr data-f="nvis"><td>Minimum speed</td><td class="tags"><span class="tg t-nvis">NVIS</span></td><td class="r"><span class="v">45<span class="u">kt</span></span></td></tr>
+<tr data-f="nvis"><td>Climb speed after take-off</td><td class="tags"><span class="tg t-nvis">NVIS</span></td><td class="r"><span class="v">45–70<span class="u">kt</span></span></td></tr>
+<tr data-f="nvis"><td>Maximum downwind speed</td><td class="tags"><span class="tg t-nvis">NVIS</span></td><td class="r"><span class="v">≤ 90<span class="u">kt</span></span></td></tr>
+<tr data-f="nvis"><td>Effective translational lift, to ship</td><td class="tags"><span class="tg t-nvis">NVIS</span></td><td class="r"><span class="v">30–40<span class="u">KIAS</span></span></td></tr>
+<tr data-f="police"><td>Approach speed from 500 ft AGL</td><td class="tags"><span class="tg t-pol">POLICE</span></td><td class="r"><span class="v">45<span class="u">KIAS</span></span></td></tr>
+<tr data-f="police"><td>Approach speed at 50 ft before landing decision point</td><td class="tags"><span class="tg t-pol">POLICE</span></td><td class="r"><span class="v">20<span class="u">kt</span></span></td></tr>
+<tr data-f="offshore"><td>No turns before V<sub>y</sub><span class="cond">500 ft AGL at night or in low visibility</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">V<sub>y</sub></span></td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="cat" data-cat="wind sea state gust deck heave">
+  <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="arw">▶</span><span class="cat-t">Wind &amp; Sea State</span><span class="cat-n">environmental limits</span>
+  </div>
+  <div class="cat-b"><table>
+    <thead><tr><th>Item / condition</th><th>Applies to</th><th class="r">Value</th></tr></thead>
+    <tbody>
+<tr data-f="offshore"><td>Helideck wind, including gusts</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">≤ 60<span class="u">kt</span></span></td></tr>
+<tr data-f="offshore"><td>Wind for start and shutdown<span class="cond">AW169</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">≤ 40<span class="u">kt</span></span></td></tr>
+<tr data-f="hho"><td>Maximum relative wind in the hoisting area<span class="cond">Or RFM limitation, whichever is lower</span></td><td class="tags"><span class="tg t-hho">HHO</span></td><td class="r"><span class="v">55<span class="u">kt</span></span></td></tr>
+<tr data-f="all"><td>Maximum crosswind, CAT-A operations</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">20<span class="u">kt</span></span></td></tr>
+<tr data-f="all"><td>Tailwind, CAT-A operations</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v no">PROHIBITED</span></td></tr>
+<tr data-f="offshore"><td>Sea state<span class="cond">AW169 certificated ditching specification</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">≤ 6</span></td></tr>
+<tr data-f="offshore"><td>Unstable deck — pitch or roll<span class="cond">No shutdown on unstable deck</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">&gt; 1<span class="u">°</span></span></td></tr>
+<tr data-f="offshore"><td>Unstable deck — heave</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">&gt; 0.4<span class="u">m/s</span></span></td></tr>
+<tr data-f="all"><td>Additional trip fuel when mean wind ≥ 50 kt or headwind &gt; 45 kt</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">+5<span class="u">% trip</span></span></td></tr>
+<tr data-f="all"><td>Minimum altitude additive for wind above 30 kt, per 10 kt</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">+500<span class="u">ft, max +2000</span></span></td></tr>
+<tr data-f="ara"><td>Final approach into wind<span class="cond">Landfall ARA</span></td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">Required</span></td></tr>
+<tr data-f="offshore"><td>Cold flaring — minimum wind speed<span class="cond">Permitted only on production platforms</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">&gt; 10<span class="u">kt</span></span></td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="cat" data-cat="climb descent rate fpm roc rod">
+  <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="arw">▶</span><span class="cat-t">Climb &amp; Descent Rates</span><span class="cat-n">vertical performance</span>
+  </div>
+  <div class="cat-b"><table>
+    <thead><tr><th>Item / condition</th><th>Applies to</th><th class="r">Value</th></tr></thead>
+    <tbody>
+<tr data-f="offshore"><td>Departure — initial climb to 1500 ft</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">1000<span class="u">fpm</span></span></td></tr>
+<tr data-f="offshore"><td>Departure — above 1500 ft</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">800<span class="u">fpm</span></span></td></tr>
+<tr data-f="nvis"><td>Climb after take-off</td><td class="tags"><span class="tg t-nvis">NVIS</span></td><td class="r"><span class="v">500<span class="u">fpm</span></span></td></tr>
+<tr data-f="nvis"><td>Maximum rate of descent before effective translational lift, to ship</td><td class="tags"><span class="tg t-nvis">NVIS</span></td><td class="r"><span class="v">≤ 300<span class="u">fpm</span></span></td></tr>
+<tr data-f="police"><td>Maximum vertical speed on approach</td><td class="tags"><span class="tg t-pol">POLICE</span></td><td class="r"><span class="v">&lt; 300<span class="u">fpm</span></span></td></tr>
+<tr data-f="offshore"><td>Rate of climb at 300 m, one engine inoperative<span class="cond">CAT.POL.H.305</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">&gt; 150<span class="u">ft/min</span></span></td></tr>
+<tr data-f="nvis"><td>Maximum nose-down attitude on take-off</td><td class="tags"><span class="tg t-nvis">NVIS</span></td><td class="r"><span class="v">10<span class="u">°</span></span></td></tr>
+<tr data-f="nvis"><td>Maximum bank angle downwind</td><td class="tags"><span class="tg t-nvis">NVIS</span></td><td class="r"><span class="v">30<span class="u">°</span></span></td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="cat" data-cat="range distance geometry offset decision range">
+  <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="arw">▶</span><span class="cat-t">Ranges, Distances &amp; Geometry</span><span class="cat-n">approach & landing areas</span>
+  </div>
+  <div class="cat-b"><table>
+    <thead><tr><th>Item / condition</th><th>Applies to</th><th class="r">Value</th></tr></thead>
+    <tbody>
+<tr data-f="ara"><td>Initial point</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">6<span class="u">NM / 1500 ft / 100 kt</span></span></td></tr>
+<tr data-f="ara"><td>Final approach point</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">4<span class="u">NM / 1000 ft / V</span><sub>y</sub></span></td></tr>
+<tr data-f="ara"><td>Offset initiation point<span class="cond">10° offset · 15° track at 1 NM</span></td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">1.5<span class="u">NM</span></span></td></tr>
+<tr data-f="ara"><td>Missed approach point</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">0.75<span class="u">NM</span></span></td></tr>
+<tr data-f="ara"><td>Decision range — offshore ARA</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">≥ 0.75<span class="u">NM</span></span></td></tr>
+<tr data-f="ara"><td>Decision range — landfall ARA<span class="cond">May only proceed beyond if the pre-determined point is clearly identified and weather permits visual continuation</span></td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">≥ 1.0<span class="u">NM</span></span></td></tr>
+<tr data-f="ara"><td>Commence descent no later than — landfall ARA</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">2<span class="u">NM to PDP</span></span></td></tr>
+<tr data-f="ara"><td>Offset the pre-determined point by 10° — landfall ARA<span class="cond">Toward the missed approach direction</span></td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">1.5<span class="u">NM</span></span></td></tr>
+<tr data-f="ara"><td>Final approach angle from perpendicular to shoreline — landfall ARA</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">≥ 30<span class="u">°</span></span></td></tr>
+<tr data-f="ara"><td>Missed approach turn — offshore ARA</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">+30<span class="u">° (45° total)</span></span></td></tr>
+<tr data-f="ara"><td>Missed approach turn away from target — landfall ARA<span class="cond">Standard rate turn</span></td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">≥ 45<span class="u">°</span></span></td></tr>
+<tr data-f="ara"><td>Radar / GNSS range tolerance, final approach fix to offset initiation point</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">0.3<span class="u">NM</span></span></td></tr>
+<tr data-f="ara"><td>Maximum bearing discrepancy at final approach fix, 4 NM</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">10<span class="u">°</span></span></td></tr>
+<tr data-f="offshore"><td>Shuttle sector length for reduced minima</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">&lt; 10<span class="u">NM</span></span></td></tr>
+<tr data-f="offshore ifr"><td>Obstacle clearance for 1000 ft IFR cruise</td><td class="tags"><span class="tg t-off">OFFSHORE</span><span class="tg t-ifr">IFR</span></td><td class="r"><span class="v">5<span class="u">NM</span></span></td></tr>
+<tr data-f="offshore"><td>Ship or rig visual from, at 500 ft<span class="cond">En-route descent offshore (cloud break)</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">2<span class="u">NM</span></span></td></tr>
+<tr data-f="offshore ifr"><td>Point of no return from destination<span class="cond">Offshore alternate</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span><span class="tg t-ifr">IFR</span></td><td class="r"><span class="v">≤ 30<span class="u">min</span></span></td></tr>
+<tr data-f="offshore ifr"><td>No fog forecast within<span class="cond">Offshore alternate</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span><span class="tg t-ifr">IFR</span></td><td class="r"><span class="v">60<span class="u">NM</span></span></td></tr>
+<tr data-f="police"><td>Minimum landing zone</td><td class="tags"><span class="tg t-pol">POLICE</span></td><td class="r"><span class="v">25 × 25<span class="u">m</span></span></td></tr>
+<tr data-f="hho"><td>Winching area — clear zone</td><td class="tags"><span class="tg t-hho">HHO</span></td><td class="r"><span class="v">5<span class="u">m</span></span></td></tr>
+<tr data-f="hho"><td>Winching area — manoeuvring zone</td><td class="tags"><span class="tg t-hho">HHO</span></td><td class="r"><span class="v">30<span class="u">m</span></span></td></tr>
+<tr data-f="offshore"><td>Drop-down</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">~20<span class="u">ft</span></span></td></tr>
+<tr data-f="offshore"><td>Rejected take-off point above deck, typical</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">25<span class="u">ft</span></span></td></tr>
+<tr data-f="offshore"><td>Obstacle clearance, offshore take-off</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">35<span class="u">ft</span></span></td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="cat" data-cat="fuel reserve contingency holding">
+  <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="arw">▶</span><span class="cat-t">Fuel</span><span class="cat-n">reserves & contingency</span>
+  </div>
+  <div class="cat-b"><table>
+    <thead><tr><th>Item / condition</th><th>Applies to</th><th class="r">Value</th></tr></thead>
+    <tbody>
+<tr data-f="ifr"><td>Contingency — IFR</td><td class="tags"><span class="tg t-ifr">IFR</span></td><td class="r"><span class="v">10<span class="u">% trip</span></span></td></tr>
+<tr data-f="vfr"><td>Contingency — VFR day, non-hostile</td><td class="tags"><span class="tg t-vfr">VFR</span></td><td class="r"><span class="v">5<span class="u">% trip</span></span></td></tr>
+<tr data-f="vfr"><td>Contingency — VFR day, hostile</td><td class="tags"><span class="tg t-vfr">VFR</span></td><td class="r"><span class="v">10<span class="u">% trip</span></span></td></tr>
+<tr data-f="vfr"><td>Contingency — VFR overwater or night</td><td class="tags"><span class="tg t-vfr">VFR</span></td><td class="r"><span class="v">10<span class="u">% trip</span></span></td></tr>
+<tr data-f="ifr"><td>Final reserve — IFR</td><td class="tags"><span class="tg t-ifr">IFR</span></td><td class="r"><span class="v">30<span class="u">min holding @ 1500 ft</span></span></td></tr>
+<tr data-f="vfr"><td>Final reserve — VFR day</td><td class="tags"><span class="tg t-vfr">VFR</span></td><td class="r"><span class="v">20<span class="u">min best range</span></span></td></tr>
+<tr data-f="vfr"><td>Final reserve — VFR overwater or night</td><td class="tags"><span class="tg t-vfr">VFR</span></td><td class="r"><span class="v">30<span class="u">min holding</span></span></td></tr>
+<tr data-f="all"><td>Additional trip fuel, mean wind ≥ 50 kt or headwind &gt; 45 kt</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">+5<span class="u">% trip</span></span></td></tr>
+<tr data-f="all"><td>Isolated destination — holding including final reserve<span class="cond">Taxi + trip + 10% contingency</span></td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">2<span class="u">h</span></span></td></tr>
+<tr data-f="all"><td>After critical-point engine failure — hold before approach<span class="cond">Multi-engine · divert, hold, approach and land</span></td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">15<span class="u">min @ 1500 ft</span></span></td></tr>
+<tr data-f="police"><td>Minimum reserve to nearest fuel-available site</td><td class="tags"><span class="tg t-pol">POLICE</span></td><td class="r"><span class="v">30<span class="u">min</span></span></td></tr>
+<tr data-f="all"><td>In-flight fuel check interval<span class="cond">Calls: "MINIMUM FUEL" / "MAYDAY FUEL"</span></td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">≤ 30<span class="u">min</span></span></td></tr>
+<tr data-f="ifr"><td>Additional fuel when no alternate is required</td><td class="tags"><span class="tg t-ifr">IFR</span></td><td class="r"><span class="v">+15<span class="u">min</span></span></td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="cat" data-cat="mass weight loading cargo payload">
+  <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="arw">▶</span><span class="cat-t">Mass &amp; Loading</span><span class="cat-n">standard masses & payload</span>
+  </div>
+  <div class="cat-b"><table>
+    <thead><tr><th>Item / condition</th><th>Applies to</th><th class="r">Value</th></tr></thead>
+    <tbody>
+<tr data-f="all"><td>Male passenger — standard / with survival suit<span class="cond">6–9 seats</span></td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">90 / 93<span class="u">kg</span></span></td></tr>
+<tr data-f="all"><td>Female passenger — standard / with survival suit<span class="cond">6–9 seats</span></td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">72 / 75<span class="u">kg</span></span></td></tr>
+<tr data-f="all"><td>Child — standard / with survival suit</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">35 / 38<span class="u">kg</span></span></td></tr>
+<tr data-f="all"><td>Flight crew</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">85<span class="u">kg</span></span></td></tr>
+<tr data-f="all"><td>Baggage and freight</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">Actual weight</span></td></tr>
+<tr data-f="all"><td>JET A-1 density</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">0.799<span class="u">kg/l</span></span></td></tr>
+<tr data-f="offshore"><td>Maximum take-off and landing mass, offshore<span class="cond">CAT.POL.H.305 · PC2 enhanced · RFM Supplement 4 CAT A offshore</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">4600<span class="u">kg</span></span></td></tr>
+<tr data-f="hho"><td>Maximum hoist load</td><td class="tags"><span class="tg t-hho">HHO</span></td><td class="r"><span class="v">249<span class="u">kg</span></span></td></tr>
+<tr data-f="offshore"><td>Cargo — maximum per package</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">15<span class="u">kg</span></span></td></tr>
+<tr data-f="offshore"><td>Cargo on passenger seat</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">80<span class="u">kg/seat</span></span></td></tr>
+<tr data-f="offshore"><td>Cabin floor payload</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">740<span class="u">kg</span></span></td></tr>
+<tr data-f="offshore"><td>Single anchor point</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">46<span class="u">kg</span></span></td></tr>
+<tr data-f="offshore"><td>Single seat track</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">190<span class="u">kg</span></span></td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="cat" data-cat="prohibited restriction not permitted">
+  <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="arw">▶</span><span class="cat-t">Prohibitions &amp; Restrictions</span><span class="cat-n">conditional limits</span>
+  </div>
+  <div class="cat-b"><table>
+    <thead><tr><th>Item / condition</th><th>Applies to</th><th class="r">Value</th></tr></thead>
+    <tbody>
+<tr data-f="hho"><td>Winching in dry snow showers, +5 to −10 °C</td><td class="tags"><span class="tg t-hho">HHO</span></td><td class="r"><span class="v no">PROHIBITED</span></td></tr>
+<tr data-f="hho"><td>Winching with CB or lightning in the area</td><td class="tags"><span class="tg t-hho">HHO</span></td><td class="r"><span class="v no">PROHIBITED</span></td></tr>
+<tr data-f="police"><td>Explosives on board</td><td class="tags"><span class="tg t-pol">POLICE</span></td><td class="r"><span class="v no">PROHIBITED</span></td></tr>
+<tr data-f="all"><td>Tailwind, CAT-A operations</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v no">PROHIBITED</span></td></tr>
+<tr data-f="ifr"><td>Continuation past 1000 ft above aerodrome elevation, RVR below 550 m<span class="cond">Approach ban</span></td><td class="tags"><span class="tg t-ifr">IFR</span></td><td class="r"><span class="v no">PROHIBITED</span></td></tr>
+<tr data-f="ara"><td>Discontinuing a missed approach once initiated</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v no">PROHIBITED</span></td></tr>
+<tr data-f="offshore"><td>Shutdown on unstable deck</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v no">PROHIBITED</span></td></tr>
+<tr data-f="offshore"><td>Night landing on bow-mounted decks</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v no">PROHIBITED</span></td></tr>
+<tr data-f="hho"><td>Vessels under 30 000 GT, no dedicated hoisting area, or cluttered deck</td><td class="tags"><span class="tg t-hho">HHO</span></td><td class="r"><span class="v">Daylight only</span></td></tr>
+<tr data-f="ifr"><td>Approach with RVR below 800 m<span class="cond">ILS / MLS / GLS / LPV</span></td><td class="tags"><span class="tg t-ifr">IFR</span></td><td class="r"><span class="v">Autopilot-coupled only</span></td></tr>
+<tr data-f="police"><td>Ammunition<span class="cond">Weapon cases in cabin · pepper spray and mace in baggage compartment</span></td><td class="tags"><span class="tg t-pol">POLICE</span></td><td class="r"><span class="v">Separated from weapon</span></td></tr>
+<tr data-f="offshore"><td>Cold flaring<span class="cond">Wind above 10 kt</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">Production platforms only</span></td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="cat" data-cat="equipment crew raft survival suit radar">
+  <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="arw">▶</span><span class="cat-t">Equipment &amp; Crew Requirements</span><span class="cat-n">required configuration</span>
+  </div>
+  <div class="cat-b"><table>
+    <thead><tr><th>Item / condition</th><th>Applies to</th><th class="r">Value</th></tr></thead>
+    <tbody>
+<tr data-f="offshore"><td>Life rafts<span class="cond">Single raft limits the flight to 7 persons on board</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">2 × 7<span class="u">pax</span></span></td></tr>
+<tr data-f="offshore"><td>Survival suits<span class="cond">If sea temperature below 10 °C, if rescue time exceeds survival time, or at night</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">Required</span></td></tr>
+<tr data-f="nvis"><td>Both pilots shall wear NVG</td><td class="tags"><span class="tg t-nvis">NVIS</span></td><td class="r"><span class="v">Required</span></td></tr>
+<tr data-f="ara"><td>Weather radar operative and approach sector clear of obstructions<span class="cond">Also required for en-route descent offshore</span></td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">Required</span></td></tr>
+<tr data-f="ara"><td>Pre-determined point defined as an FMS waypoint and selected active<span class="cond">Landfall ARA · commander shall cross-check radar against GNSS range and bearing</span></td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">Required</span></td></tr>
+<tr data-f="ara"><td>TAWS displayed on a screen<span class="cond">Landfall ARA circling</span></td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">Recommended</span></td></tr>
+<tr data-f="police"><td>Crew composition</td><td class="tags"><span class="tg t-pol">POLICE</span></td><td class="r"><span class="v">2 pilots + 1 technician</span></td></tr>
+<tr data-f="ifr"><td>Two independent instrument approach procedures<span class="cond">When no alternate is planned</span></td><td class="tags"><span class="tg t-ifr">IFR</span></td><td class="r"><span class="v">Required</span></td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="cat" data-cat="call callout phraseology">
+  <div class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+    <span class="arw">▶</span><span class="cat-t">Standard Calls</span><span class="cat-n">callouts by phase</span>
+  </div>
+  <div class="cat-b"><table>
+    <thead><tr><th>Item / condition</th><th>Applies to</th><th class="r">Value</th></tr></thead>
+    <tbody>
+<tr data-f="ara"><td>Descending through 1000 ft radio altitude</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">"1000ft RA"</span></td></tr>
+<tr data-f="ara"><td>At final approach point</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">"DECEND TO MDH"</span></td></tr>
+<tr data-f="ara"><td>100 ft above minimum descent height</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">"100 FEET TO GO"</span></td></tr>
+<tr data-f="ara"><td>At minimum descent height</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">"LEVEL OFF"</span></td></tr>
+<tr data-f="ara"><td>Installation + 1.5 NM<span class="cond">Response: "turning 10°"</span></td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">"1½ MILE"</span></td></tr>
+<tr data-f="ara"><td>Installation + 1.0 NM<span class="cond">Response: "checking 15°"</span></td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">"1 MILE"</span></td></tr>
+<tr data-f="ara"><td>At missed approach point, visual</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">"MINIMA-VISUAL"</span></td></tr>
+<tr data-f="ara"><td>At missed approach point, not visual</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">"MINIMA-MISSED APPROACH"</span></td></tr>
+<tr data-f="ara"><td>Transfer of control when pilot monitoring has best reference</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">"MY CONTROLS"</span></td></tr>
+<tr data-f="offshore"><td>Offshore take-off decision</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">"Defined Point" / "Committed"</span></td></tr>
+<tr data-f="all"><td>Fuel state</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">"MINIMUM FUEL" / "MAYDAY FUEL"</span></td></tr>
+<tr data-f="police"><td>Blind calls onshore — VHF2<span class="cond">Radar tilt +4</span></td><td class="tags"><span class="tg t-pol">POLICE</span></td><td class="r"><span class="v">123.5</span></td></tr>
+<tr data-f="offshore"><td>Mandatory radio calls</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">Below 500<span class="u">ft</span></span></td></tr>
+    </tbody>
+  </table></div>
+</div>
+  <div class="no-results" id="no-results">Nothing matches the current filter or search.</div>
+</div>
+<script>
+let allOpen=false;
+function toggleAll(){
+  allOpen=!allOpen;
+  document.querySelectorAll('.cat').forEach(c=>c.classList.toggle('open',allOpen));
+  document.getElementById('expall').textContent=allOpen?'Collapse all':'Expand all';
+}
+function fil(f,el){
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  window._fil=f;
+  apply();
+}
+function apply(){
+  const f=window._fil||'all';
+  const q=(document.getElementById('search').value||'').trim().toLowerCase();
+  let any=false;
+  document.querySelectorAll('.cat').forEach(cat=>{
+    let hit=false;
+    cat.querySelectorAll('tbody tr').forEach(tr=>{
+      if(tr.classList.contains('ghead')) return;
+      const tf=(tr.dataset.f||'all').split(' ');
+      const okF = f==='all' || tf.includes(f) || tf.includes('all');
+      const okQ = !q || tr.textContent.toLowerCase().includes(q) || cat.dataset.cat.includes(q);
+      const show = okF && okQ;
+      tr.classList.toggle('hide',!show);
+      if(show) hit=true;
+    });
+    cat.querySelectorAll('tr.ghead').forEach(h=>{
+      let n=h.nextElementSibling,vis=false;
+      while(n && !n.classList.contains('ghead')){ if(!n.classList.contains('hide')) vis=true; n=n.nextElementSibling; }
+      h.classList.toggle('hide',!vis);
+    });
+    cat.classList.toggle('hide',!hit);
+    if(hit) any=true;
+    if((q||f!=='all')&&hit) cat.classList.add('open');
+  });
+  document.getElementById('no-results').style.display=any?'none':'block';
+  if(!q&&f==='all'){
+    document.querySelectorAll('.cat').forEach((c,i)=>c.classList.toggle('open',i===0&&!allOpen?true:allOpen));
+    document.getElementById('expall').textContent=allOpen?'Collapse all':'Expand all';
+  }
+}
+function doSearch(){ apply(); }
+</script>
+</body>
+</html>
