@@ -665,7 +665,9 @@ $('now').onclick = () => { st.live = true; $('now').classList.add('on'); render(
 $('mLocal').onclick = () => { st.mode = 'local'; save(); render(); };
 $('mUtc').onclick = () => { st.mode = 'utc'; save(); render(); };
 const setTab = tb => { st.tab = tb; if(tb === 'cal') st.cal = st.date.slice(0,7);
-  history.replaceState(null, '', tb === 'nights' ? '#nights' : tb === 'cal' ? '#calendar' : location.pathname + location.search); render(); };
+  try{ history.replaceState(null, '', tb === 'nights' ? '#nights' : tb === 'cal' ? '#calendar' : location.pathname + location.search); }
+  catch(e){ /* sandboxed previews block address changes; the tab still switches */ }
+  render(); };
 document.querySelectorAll('.tab').forEach(b => { b.onclick = () => setTab(b.dataset.tab);
   b.onkeydown = e => { if(e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; const all = [...document.querySelectorAll('.tab')], i = all.indexOf(b);
     const nx = all[(i + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length]; nx.focus(); setTab(nx.dataset.tab); }; });
