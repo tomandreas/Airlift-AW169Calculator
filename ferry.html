@@ -202,24 +202,25 @@
         <div class="settings-grid">
           <div class="field-group">
             <label>Departure Time (first leg)</label>
-            <input type="time" id="dep-time" value="08:00">
+            <input type="time" id="dep-time" value="08:00" oninput="markStale()">
           </div>
           <div class="field-group">
             <label>TAS</label>
-            <input type="number" id="tas" value="125" min="50" max="200" style="width:100%">
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px;">knots (fixed)</div>
+            <input type="number" id="tas" value="125" min="50" max="200" inputmode="numeric" style="width:100%" oninput="onTasChange()">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px;">knots</div>
           </div>
         </div>
         <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Route Wind (optional — populates all legs)</div>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
             <label>From</label>
-            <input type="number" id="route-wind-dir" placeholder="270" min="0" max="359" style="width:72px" oninput="applyRouteWind()">
+            <input type="number" id="route-wind-dir" placeholder="dir" min="0" max="360" inputmode="numeric" style="width:72px" oninput="applyRouteWind()" onchange="applyRouteWind()">
             <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">°</span>
-            <input type="number" id="route-wind-spd" placeholder="0" min="0" max="150" style="width:60px" oninput="applyRouteWind()">
+            <input type="number" id="route-wind-spd" placeholder="kt" min="0" max="150" inputmode="numeric" style="width:60px" oninput="applyRouteWind()" onchange="applyRouteWind()">
             <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">kt</span>
             <button onclick="clearRouteWind()" style="background:none;border:1px solid var(--border);color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 8px;border-radius:2px;cursor:pointer;">Clear</button>
           </div>
+          <div id="route-wind-msg" style="font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:6px;min-height:13px;color:var(--muted);"></div>
         </div>
 
       <!-- Route builder -->
@@ -344,6 +345,14 @@ function headwindComponent(windDir,windSpd,track) {
   const diff=(windDir-track+360)%360;
   return Math.cos(diff*Math.PI/180)*windSpd;
 }
+// Groundspeed from the full wind triangle: heading is corrected for crosswind, so
+// GS = TAS·cos(WCA) − headwind. (Headwind alone overestimates GS in a crosswind.)
+function windGS(tas,windDir,windSpd,track) {
+  const r=Math.PI/180, rel=(windDir-track)*r;
+  const hw=windSpd*Math.cos(rel), xw=windSpd*Math.sin(rel);
+  const s=Math.max(-1,Math.min(1,xw/tas));
+  return tas*Math.cos(Math.asin(s))-hw;
+}
 
 // ═══════════════════════════════════════════════════════════
 // TIME UTILS
@@ -374,14 +383,29 @@ let waypoints = [
   { icao:'ENTC', mode:'gs', gs:125, windDir:270, windSpd:0, gstop:30 },
 ];
 
-function addWaypoint() {
-  waypoints.push({ icao:'', mode:'gs', gs:125, windDir:270, windSpd:0, gstop:30 });
-  renderRoute();
+function currentTas() { return parseFloat(document.getElementById('tas').value)||125; }
+function routeWind() {
+  const dir=parseFloat(document.getElementById('route-wind-dir').value);
+  const spd=parseFloat(document.getElementById('route-wind-spd').value);
+  return { dir, spd, valid: !isNaN(dir)&&!isNaN(spd)&&dir>=0&&dir<=360&&spd>=0 };
 }
+function newLeg(icao) {
+  const w=routeWind();
+  return w.valid ? { icao, mode:'wind', gs:currentTas(), gsAuto:true, windDir:w.dir%360, windSpd:w.spd, gstop:30 }
+                 : { icao, mode:'gs', gs:currentTas(), gsAuto:true, windDir:270, windSpd:0, gstop:30 };
+}
+function addWaypoint() {
+  // the old destination now starts a leg: give it the current TAS / route wind
+  const prev = waypoints[waypoints.length-1];
+  Object.assign(prev, { ...newLeg(prev.icao), gstop: prev.gstop });
+  waypoints.push(newLeg(''));
+  renderRoute(); markStale();
+}
+function onTasChange() { renderRoute(); markStale(); }
 function removeWaypoint(i) {
   if (waypoints.length<=2) return;
   waypoints.splice(i,1);
-  renderRoute();
+  renderRoute(); markStale();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -415,7 +439,7 @@ function renderRoute() {
             <span class="slider-val" id="gstop-val-${i}">${wp.gstop} min</span>
           </div>
           <input type="range" min="10" max="120" step="10" value="${wp.gstop}"
-            oninput="waypoints[${i}].gstop=parseInt(this.value);document.getElementById('gstop-val-${i}').textContent=this.value+' min'">
+            oninput="waypoints[${i}].gstop=parseInt(this.value);document.getElementById('gstop-val-${i}').textContent=this.value+' min';markStale()">
           <div class="range-hints"><span>10 min</span><span>2 hr</span></div>
         </div>
       </div>` : ''}
@@ -444,16 +468,16 @@ function renderRoute() {
             <div class="wind-fields" id="leg-fields-${i}">
               ${isWind ? `
                 <label>From</label>
-                <input type="number" value="${wp.windDir}" min="0" max="359" style="width:65px"
+                <input type="number" value="${wp.windDir}" min="0" max="360" inputmode="numeric" style="width:65px"
                   oninput="updateLeg(${i},'windDir',this.value)">
                 <span class="unit">°</span>
-                <input type="number" value="${wp.windSpd}" min="0" max="150" style="width:60px"
+                <input type="number" value="${wp.windSpd}" min="0" max="150" inputmode="numeric" style="width:60px"
                   oninput="updateLeg(${i},'windSpd',this.value)">
                 <span class="unit">kt</span>
                 <span class="gs-result">→ GS: ${computedGS} kt</span>
               ` : `
                 <label>Groundspeed</label>
-                <input type="number" value="${wp.gs}" min="50" max="250" style="width:72px"
+                <input type="number" value="${wp.gsAuto === false ? wp.gs : currentTas()}" min="50" max="250" inputmode="numeric" style="width:72px"
                   oninput="updateLeg(${i},'gs',this.value)">
                 <span class="unit">kt</span>
               `}
@@ -479,6 +503,7 @@ function updateICAO(i, val) {
   if (cardEl) cardEl.className = `wp-card ${ap?'valid':(isUnknown?'invalid':'')}`;
   renderLegDistances();
   drawMap();
+  markStale();
 }
 
 function renderLegDistances() {
@@ -497,10 +522,12 @@ function renderLegDistances() {
   });
 }
 
-function setLegMode(i, mode) { waypoints[i].mode = mode; renderRoute(); }
+function setLegMode(i, mode) { waypoints[i].mode = mode; renderRoute(); markStale(); }
 
 function updateLeg(i, field, val) {
   waypoints[i][field] = parseFloat(val)||0;
+  if (field === 'gs') waypoints[i].gsAuto = false;   // pilot typed a groundspeed: stop following TAS
+  markStale();
   if (waypoints[i].mode === 'wind') {
     const el = document.querySelector(`#leg-fields-${i} .gs-result`);
     if (el) el.textContent = `→ GS: ${getGS(i)} kt`;
@@ -509,42 +536,72 @@ function updateLeg(i, field, val) {
 
 function getGS(i) {
   const wp = waypoints[i];
-  if (wp.mode === 'gs') return wp.gs||125;
-  const tas = parseFloat(document.getElementById('tas').value)||125;
+  const tas = currentTas();
+  if (wp.mode === 'gs') return wp.gsAuto === false ? (wp.gs||tas) : tas;
   const a = AP[(wp.icao||'').toUpperCase()];
   const b = AP[(waypoints[i+1]?.icao||'').toUpperCase()];
   if (!a||!b) return tas;
   const track = bearing(a.lat,a.lon,b.lat,b.lon);
-  const hw = headwindComponent(wp.windDir,wp.windSpd,track);
-  return Math.round(tas-hw);
+  return Math.round(windGS(tas,wp.windDir,wp.windSpd,track));
 }
 
+let appliedRouteWind = null;   // last route wind copied to the legs
 function applyRouteWind() {
-  const dir = parseFloat(document.getElementById('route-wind-dir').value);
-  const spd = parseFloat(document.getElementById('route-wind-spd').value);
-  if (isNaN(dir)||isNaN(spd)) return;
+  const w = routeWind(), msg = document.getElementById('route-wind-msg');
+  const dirEmpty = document.getElementById('route-wind-dir').value === '';
+  const spdEmpty = document.getElementById('route-wind-spd').value === '';
+  if (!w.valid) {
+    msg.style.color = 'var(--danger)';
+    msg.textContent = dirEmpty && spdEmpty ? '' : dirEmpty ? 'Enter the wind direction too' : spdEmpty ? 'Enter the wind speed too' : 'Direction 0–360°, speed 0 or more';
+    return false;
+  }
   waypoints.forEach((wp,i) => {
-    if (i < waypoints.length-1) { wp.windDir=dir; wp.windSpd=spd; wp.mode='wind'; }
+    if (i < waypoints.length-1) { wp.windDir=w.dir%360; wp.windSpd=w.spd; wp.mode='wind'; }
   });
-  renderRoute();
+  appliedRouteWind = `${w.dir}/${w.spd}`;
+  msg.style.color = 'var(--muted)';
+  msg.textContent = `Applied to all legs: ${String(Math.round(w.dir%360)).padStart(3,'0')}° / ${w.spd} kt`;
+  renderRoute(); markStale();
+  return true;
 }
 
 function clearRouteWind() {
   document.getElementById('route-wind-dir').value='';
   document.getElementById('route-wind-spd').value='';
-  const tas = parseFloat(document.getElementById('tas').value)||125;
+  const tas = currentTas();
   waypoints.forEach((wp,i) => {
-    if (i < waypoints.length-1) { wp.mode='gs'; wp.gs=tas; }
+    if (i < waypoints.length-1) { wp.mode='gs'; wp.gs=tas; wp.gsAuto=true; }
   });
-  renderRoute();
+  appliedRouteWind = null;
+  document.getElementById('route-wind-msg').textContent = '';
+  renderRoute(); markStale();
+}
+
+// Results go stale when anything changes after a calculation
+function markStale() {
+  const panel = document.getElementById('results-panel');
+  if (!panel || panel.style.display === 'none') return;
+  let n = document.getElementById('stale-note');
+  if (!n) {
+    n = document.createElement('div'); n.id = 'stale-note';
+    n.style.cssText = "font-family:'IBM Plex Mono',monospace;font-size:11px;padding:8px 12px;margin-bottom:10px;border-left:3px solid var(--accent);background:rgba(232,160,32,0.08);color:var(--accent);";
+    n.textContent = 'Inputs changed since this calculation. Press Calculate Route to update.';
+    panel.querySelector('.panel').prepend(n);
+  }
+  document.getElementById('timeline').style.opacity = '.45';
+  document.getElementById('summary-bar').style.opacity = '.45';
 }
 
 // ═══════════════════════════════════════════════════════════
 // CALCULATION
 // ═══════════════════════════════════════════════════════════
 function calculate() {
-  const depMins = parseTime(document.getElementById('dep-time').value);
-  const tas = parseFloat(document.getElementById('tas').value)||125;
+  const w = routeWind();
+  if (w.valid && appliedRouteWind !== `${w.dir}/${w.spd}`) applyRouteWind();
+  const depStr = document.getElementById('dep-time').value;
+  if (!/^\d{1,2}:\d{2}/.test(depStr)) { alert('Enter a departure time first.'); return; }
+  const depMins = parseTime(depStr);
+  const tas = currentTas();
   for (let i=0; i<waypoints.length; i++) {
     if (!AP[waypoints[i].icao]) {
       alert(`Waypoint ${i+1}: "${waypoints[i].icao}" not found in database.`);
@@ -588,6 +645,9 @@ function calculate() {
   }
   renderResults(legs,wps);
   drawMap(legs,wps);
+  const n = document.getElementById('stale-note'); if (n) n.remove();
+  document.getElementById('timeline').style.opacity = '';
+  document.getElementById('summary-bar').style.opacity = '';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -771,9 +831,8 @@ function optimizeRoute() {
   }
   if (fromIcao===toIcao) { msgEl.textContent='Avgang og destinasjon er samme flyplass.'; msgEl.style.display='block'; return; }
   const tas = parseFloat(document.getElementById('tas').value)||125;
-  const rDir = parseFloat(document.getElementById('route-wind-dir').value);
-  const rSpd = parseFloat(document.getElementById('route-wind-spd').value);
-  const hasWind = !isNaN(rDir) && !isNaN(rSpd);
+  const rw = routeWind(), rDir = rw.dir%360, rSpd = rw.spd;
+  const hasWind = rw.valid;
 
   // Max range: use TAS as conservative base (wind varies per leg)
   const maxTripFuel = (MAX_FUEL-FINAL_RESERVE)/(1+CONT_PCT);
@@ -784,8 +843,7 @@ function optimizeRoute() {
     if (!hasWind) return maxRangeNM;
     const a=AP[fromIcao], b=AP[toIcao];
     const track = bearing(a.lat,a.lon,b.lat,b.lon);
-    const hw = headwindComponent(rDir,rSpd,track);
-    const gs = Math.max(30, tas-hw);
+    const gs = Math.max(30, windGS(tas,rDir,rSpd,track));
     return (maxTripFuel/FUEL_FLOW)*gs;
   }
 
@@ -836,15 +894,9 @@ function optimizeRoute() {
     if (route[route.length-1]!==toIcao) route.push(toIcao);
   }
 
-  waypoints=route.map(icao=>({icao,mode:'gs',gs:tas,windDir:270,windSpd:0,gstop:30}));
-
-  // Re-apply route wind if it's still set in the fields
-  if (hasWind) {
-    waypoints.forEach((wp,i) => {
-      if (i < waypoints.length-1) { wp.windDir=rDir; wp.windSpd=rSpd; wp.mode='wind'; }
-    });
-  }
-  renderRoute(); drawMap();
+  waypoints=route.map(icao=>newLeg(icao));
+  if (hasWind) appliedRouteWind = `${rw.dir}/${rw.spd}`;
+  renderRoute(); drawMap(); markStale();
   const stops=route.length-2;
   const totalDist=route.reduce((sum,icao,i)=>{if(i===0)return 0;return sum+Math.round(haversine(AP[route[i-1]].lat,AP[route[i-1]].lon,AP[icao].lat,AP[icao].lon));},0);
   const stopsText=stops===0?'direkteflygning — ingen stopp nødvendig':`${stops} mellomlanding${stops>1?'er':''}: ${route.slice(1,-1).join(' → ')}`;
