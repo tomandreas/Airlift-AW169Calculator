@@ -1,0 +1,33 @@
+name: Update opening hours (AIP AD 2.3)
+
+on:
+  schedule:
+    - cron: '15 2 * * *'     # every night, 02:15 UTC
+  workflow_dispatch:          # "Run workflow" button for a manual update
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-update          # never run at the same time as the NOTAM job
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Fetch and parse Avinor operational hours
+        run: node scripts/update-ops-hours.mjs
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ops_hours.json
+          if git diff --staged --quiet; then echo "No change"; exit 0; fi
+          git commit -m "Update opening hours (AD 2.3)"
+          git pull --rebase
+          git push

@@ -39,7 +39,7 @@
 
   /* Form elements */
   label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
-  input[type="text"], input[type="number"], input[type="time"] {
+  input[type="text"], input[type="number"], input[type="time"], input[type="date"] {
     background: var(--surface2); border: 1px solid var(--border); color: var(--white);
     font-family: 'IBM Plex Mono', monospace; font-size: 14px; padding: 9px 12px;
     border-radius: 3px; outline: none; transition: border-color 0.15s; -moz-appearance: textfield;
@@ -136,6 +136,27 @@
   .tl-icao { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 2px; color: var(--white); line-height: 1; }
   .tl-apname { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); margin-bottom: 6px; }
   .tl-times { display: flex; gap: 16px; flex-wrap: wrap; }
+  /* opening-hours advisories */
+  .adv { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+  .adv-row { display: grid; grid-template-columns: 44px minmax(0,1fr); gap: 8px; padding: 4px 6px; border-left: 3px solid transparent; margin: 2px 0; }
+  .adv-k { color: var(--muted); letter-spacing: 1px; }
+  .adv-h { color: var(--text); }
+  .adv-m { display: block; margin-top: 2px; }
+  .adv-r { display: block; color: var(--muted); font-size: 10px; margin-top: 2px; }
+  .st-ok .adv-m { color: var(--ok); }
+  .st-info .adv-m { color: var(--muted); }
+  .st-warn { border-left-color: var(--accent); background: rgba(232,160,32,0.06); }
+  .st-warn .adv-m { color: var(--accent); }
+  .st-bad { border-left-color: var(--danger); background: rgba(224,82,82,0.10); }
+  .st-bad .adv-m { color: var(--danger); font-weight: 600; }
+  .adv details { margin-top: 3px; }
+  .adv summary { cursor: pointer; color: var(--accent); }
+  .adv pre { white-space: pre-wrap; word-break: break-word; margin: 4px 0 0; color: var(--text); font-size: 10.5px; background: var(--surface); padding: 6px 8px; border-radius: 2px; }
+  .adv a { color: var(--accent2); }
+  input[type="date"] { color-scheme: dark; }
+  .today-btn { background: none; border: 1px solid var(--border); color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 0 10px; border-radius: 2px; cursor: pointer; }
+  .today-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .data-note { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 12px; line-height: 1.6; }
   .tl-time-item { display: flex; flex-direction: column; gap: 2px; }
   .tl-time-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
   .tl-time-val { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; color: var(--white); }
@@ -201,13 +222,27 @@
         <div class="panel-title">Flight Settings</div>
         <div class="settings-grid">
           <div class="field-group">
-            <label>Departure Time (first leg)</label>
+            <label>Departure Time (first leg) <span id="dep-zone-lbl"></span></label>
             <input type="time" id="dep-time" value="08:00" oninput="markStale()">
           </div>
           <div class="field-group">
             <label>TAS</label>
             <input type="number" id="tas" value="125" min="50" max="200" inputmode="numeric" style="width:100%" oninput="onTasChange()">
             <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px;">knots</div>
+          </div>
+          <div class="field-group">
+            <label for="plan-date">Planning date</label>
+            <div style="display:flex;gap:8px;align-items:stretch;">
+              <input type="date" id="plan-date" style="flex:1;min-width:0" oninput="markStale()">
+              <button type="button" class="today-btn" onclick="setToday()">Today</button>
+            </div>
+          </div>
+          <div class="field-group">
+            <label>Times in</label>
+            <div class="wind-toggle" style="width:max-content">
+              <button type="button" class="wt-btn" id="tz-local" onclick="setZone('local')">Local</button>
+              <button type="button" class="wt-btn" id="tz-utc" onclick="setZone('utc')">UTC</button>
+            </div>
           </div>
         </div>
         <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
@@ -266,6 +301,120 @@
 </div>
 
 <script>
+// Opening hours (AIP Norway AD 2.3): parse ATS / fuel entries and check a planned time against them.
+// AIP convention: times are UTC; the first time is for winter, the one in brackets for summer (Norwegian DST).
+// Weekdays are taken as UTC days, like the times.
+(function (root) {
+  const DAYS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  const ORDER = [1,2,3,4,5,6,0]; // MON..SUN
+  const hhmm = s => { s = s.replace(':',''); const n = s.padStart(4,'0'); return (+n.slice(0,2))*60 + (+n.slice(2)); };
+
+  function dayRange(a, b){
+    const i = ORDER.indexOf(DAYS.indexOf(a)), j = ORDER.indexOf(DAYS.indexOf(b ?? a));
+    const out = []; for(let k = i; ; k = (k+1) % 7){ out.push(ORDER[k]); if(k === j) break; } return out;
+  }
+
+  // Pick the part of an entry that matters: Jet A1 for fuel, TWR for ATS
+  function focus(raw, kind){
+    let s = raw;
+    if(kind === 'fuel'){
+      const m = s.match(/JET\s*A-?1\s*:/i);
+      if(m){ s = s.slice(m.index + m[0].length); const e = s.search(/[.,]?\s*(?:100\s?LL|F\s?-?34|AVGAS)\s*:/i); if(e >= 0) s = s.slice(0, e); }
+    } else {
+      const m = s.match(/\bTWR\s*:/i);
+      if(m){ s = s.slice(m.index + m[0].length); const e = s.search(/,?\s*APP\s*:/i); if(e >= 0) s = s.slice(0, e); }
+    }
+    return s.trim();
+  }
+
+  // → { type:'h24'|'none'|'sched'|'unknown', winter, summer, holidayExcl, extraClosed:[{m,d}], note }
+  function parse(raw, rmk, kind){
+    const res = { type:'unknown', winter:null, summer:null, holidayExcl:false, extraClosed:[], raw:raw || '', rmk:rmk || '' };
+    const all = `${raw || ''} ${rmk || ''}`;
+    if(/EXC(?:EPT)?\.?\s+holidays|Public\s+HOL\s+excluded/i.test(all)) res.holidayExcl = true;
+    const dec = all.match(/Excluding\s+(\d{1,2})\s+and\s+(\d{1,2})\s+DEC/i);
+    if(dec) res.extraClosed.push({ m:12, d:+dec[1] }, { m:12, d:+dec[2] });
+    if(!raw) return res;
+    let s = focus(raw, kind).replace(/(\d{1,2}):(\d{2})/g, '$1$2');
+    if(/\bWEEK\b/i.test(s)){ res.note = 'Seasonal (week-based) schedule'; return res; }
+    if(/^(AVBL\s+)?H24\.?$/i.test(s)){ res.type = 'h24'; return res; }
+    if(/^(NIL|CLSD|CLOSED)\.?$/i.test(s) || /^No ATS/i.test(s)){ res.type = 'none'; return res; }
+    const PAIR = /(\d{3,4})\s*-\s*(\d{3,4})(?:\s*\(\s*(\d{3,4})\s*-\s*(\d{3,4})\s*\))?/g;
+    if(!PAIR.test(s)){ res.note = s; return res; }  // O/R, "No detailed OPS HR", etc.
+    const W = {}, S = {}; for(let d = 0; d < 7; d++){ W[d] = []; S[d] = []; }
+    const DAY = /\b(MON|TUE|WED|THU|FRI|SAT|SUN)(?:\s*-\s*(MON|TUE|WED|THU|FRI|SAT|SUN))?\s*:/g;
+    const marks = []; let m; while((m = DAY.exec(s))) marks.push({ i:m.index, end:m.index + m[0].length, days:dayRange(m[1], m[2]) });
+    const segs = marks.length ? marks.map((k, n) => ({ days:k.days, body:s.slice(k.end, n + 1 < marks.length ? marks[n+1].i : s.length) }))
+                              : [{ days:[0,1,2,3,4,5,6], body:s }];
+    for(const g of segs){
+      PAIR.lastIndex = 0; let p;
+      while((p = PAIR.exec(g.body))){
+        const w = [hhmm(p[1]), hhmm(p[2])], su = p[3] ? [hhmm(p[3]), hhmm(p[4])] : w;
+        g.days.forEach(d => { W[d].push(w); S[d].push(su); });
+      }
+    }
+    res.type = 'sched'; res.winter = W; res.summer = S;
+    return res;
+  }
+
+  // ---------- time helpers ----------
+  function osloOffset(date){ // minutes
+    const f = new Intl.DateTimeFormat('en-US',{ timeZone:'Europe/Oslo', hourCycle:'h23', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+    const p = {}; f.formatToParts(date).forEach(x => p[x.type] = x.value);
+    return Math.round((Date.UTC(+p.year, +p.month-1, +p.day, +p.hour % 24, +p.minute) - Math.floor(date.getTime()/60000)*60000) / 60000);
+  }
+  const isSummer = date => osloOffset(date) === 120;
+  function osloDate(date){ const d = new Date(date.getTime() + osloOffset(date)*60000); return { y:d.getUTCFullYear(), m:d.getUTCMonth()+1, d:d.getUTCDate() }; }
+
+  // Norwegian public holidays (helligdager + 1 May + 17 May)
+  function easter(y){ const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1; return Date.UTC(y,mo-1,da); }
+  const HOL = {};
+  function holidays(y){
+    if(HOL[y]) return HOL[y];
+    const e = easter(y), day = 86400000, fmt = t => { const d = new Date(t); return `${d.getUTCMonth()+1}-${d.getUTCDate()}`; };
+    const list = { '1-1':'New Year’s Day', '5-1':'Labour Day', '5-17':'Constitution Day', '12-25':'Christmas Day', '12-26':'Boxing Day' };
+    [[-3,'Maundy Thursday'],[-2,'Good Friday'],[0,'Easter Sunday'],[1,'Easter Monday'],[39,'Ascension Day'],[49,'Whit Sunday'],[50,'Whit Monday']].forEach(([o,n]) => list[fmt(e + o*day)] = n);
+    return HOL[y] = list;
+  }
+  function holidayName(date){ const o = osloDate(date); return holidays(o.y)[`${o.m}-${o.d}`] || null; }
+
+  // ---------- checks ----------
+  function periodsOn(p, date){ // UTC-day periods (minutes) that apply on the UTC day of `date`
+    const tbl = isSummer(date) ? p.summer : p.winter; return tbl[date.getUTCDay()] || [];
+  }
+  function openAt(p, date){
+    // → { state:'open'|'closed'|'unknown', reason }
+    if(p.type === 'h24') return { state:'open' };
+    if(p.type === 'none') return { state:'closed', reason:'not provided' };
+    if(p.type !== 'sched') return { state:'unknown', reason:p.note || 'no fixed hours' };
+    const o = osloDate(date);
+    if(p.extraClosed.some(x => x.m === o.m && x.d === o.d)) return { state:'closed', reason:`closed ${o.d} DEC` };
+    const hol = holidayName(date);
+    if(hol && p.holidayExcl) return { state:'closed', reason:`${hol} (public holidays excluded)` };
+    const min = date.getUTCHours()*60 + date.getUTCMinutes();
+    const today = periodsOn(p, date), yday = periodsOn(p, new Date(date.getTime() - 86400000));
+    const open = today.some(([s,e]) => e > s ? (min >= s && min < e) : (min >= s || min < e))
+              || yday.some(([s,e]) => e <= s && min < e);
+    return { state: open ? 'open' : 'closed', holiday: hol || null };
+  }
+  // opening periods on the UTC day of `date`, as absolute Date pairs
+  function periodsAsDates(p, date){
+    if(p.type !== 'sched') return [];
+    const d0 = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+    return periodsOn(p, date).map(([s,e]) => [new Date(d0 + s*60000), new Date(d0 + (e > s ? e : e + 1440)*60000)]);
+  }
+  // first time within [a,b] when open (5-min steps), or null
+  function firstOpen(p, a, b){
+    for(let t = a.getTime(); t <= b.getTime(); t += 5*60000){ if(openAt(p, new Date(t)).state === 'open') return new Date(t); }
+    return null;
+  }
+
+  root.OpsHours = { parse, openAt, periodsAsDates, firstOpen, holidayName, isSummer, osloOffset };
+  if(typeof module !== 'undefined') module.exports = root.OpsHours;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+// Built-in copy of AIP AD 2.3 (ATS + fuel), used when data/ops_hours.json can't be loaded
+const OPS_SNAPSHOT = {"source": "https://aim-prod.avinor.no/no/OperationalHours/View/Index/82/ops_hrs.html", "revised": "AIRAC 03 SEP 2026", "fetched": "2026-09-27T12:30:00Z", "snapshot": true, "fields": {"ENAL": {"ats": {"hr": "MON - SUN: 0500 - 2230 (0400 - 2130)", "rmk": ""}, "fuel": {"hr": "MON - SAT: 0400 - 2230 (0300 - 2130), SUN: 0400 - 2300 (0300 - 2200)", "rmk": "Outside opening HR O/R prior to closing."}}, "ENAN": {"ats": {"hr": "MON - FRI: 0420 - 2100 (0320 - 2000), SAT: 0750 - 0830 (0650 - 0730), SUN: 1015 - 2100 (0915 - 2000)", "rmk": "Public HOL excluded"}, "fuel": {"hr": "MON - FRI: 0630 - 1430 (0530 - 1330), SAT - SUN: NIL", "rmk": "For public HOL contact FLO fuel (+47) 458 71 621"}}, "ENAS": {"ats": {"hr": "No detailed HR of OPS, AFIS AVBL in accordance with PPR.", "rmk": "Contact Kings Bay Ltd. or Longyear AFIS"}, "fuel": {"hr": "No detailed OPS HR, AVBL O/R by prior permission", "rmk": ""}}, "ENAT": {"ats": {"hr": "MON - FRI: 0415 - 2305 (0315 - 2205), SAT: 0900 - 1900 (0800 - 1800), SUN: 0600 - 0700 (0500 - 0600) / 0900 - 2305 (0800 - 2205)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0500 - 1445 (0400 - 1345) / 1950 - 2100 (1850 - 2000), SAT: 1000 - 1600 (0900 - 1500), SUN: 0900 - 1300 (0800 - 1200) / 1950 - 2100 (1850 - 2000)", "rmk": "Within HR of SER: Air BP (+47) 917 22 590, Outside HR of SER: Air BP OOHS (+971) 5045 30326"}}, "ENBL": {"ats": {"hr": "MON - FRI: 0450 - 2230 (0350 - 2130), SAT: 0730 - 0830 (0630 - 0730) / 1130 - 1530 (1030 - 1430), SUN: 0730 - 0830 (0630 - 0730) / 1130 - 2230 (1030 - 2130)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0450 - 2245 (0350 - 2145), SAT: 1100 - 1450 (1000 - 1350), SUN: 0950 - 1830 (0850 - 1730) / 2120 - 2250 (2020 - 2150)", "rmk": "For GA O/R via ATS"}}, "ENBN": {"ats": {"hr": "MON - FRI: 0500 - 2215 (0400 - 2115), SAT: 0910 - 1310 (0810 - 1210), SUN: 0940 - 1045 (0840 - 0945) / 1410 - 2215 (1310 - 2115)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0500 - 2215 (0400 - 2115), SAT: 0910 - 1310 (0810 - 1210), SUN: 0940 - 1045 (0840 - 0945) / 1410 - 2215 (1310 - 2115)", "rmk": "Outside these HR O/R (+47) 48 28 13 83"}}, "ENBO": {"ats": {"hr": "H24", "rmk": ""}, "fuel": {"hr": "JET A1: MON - FRI: 0330 - 2130 (0230 - 2030), SAT: 0530 - 1400 (0430 - 1300), SUN: 0900 - 2130 (0800 - 2030). 100LL: H24. F 34: MON - FRI: 0730 - 1530 (0630 - 1430).", "rmk": "JET A1: (+47) 75 52 03 79. F 34: (+47) 90 08 84 50. Surcharge applies outside HR of OPS."}}, "ENBR": {"ats": {"hr": "H24", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0400 - 2200 (0300 - 2100), SAT: 0400 - 2000 (0300 - 1900), SUN: 0400 - 2230 (0300 - 2130)", "rmk": "Outside these HR O/R Flytanking AS (+47) 55 92 64 64 / (+47) 414 17 433."}}, "ENBS": {"ats": {"hr": "MON - FRI: 0600 - 2015 (0500 - 1915), SAT: NIL, SUN: 1115 - 2015 (1015 - 1915)", "rmk": "HOSP/SAR outside HR OF OPS AVBL O/R 40 MIN prior notice via Polaris ACC Bodø"}, "fuel": {"hr": "NIL", "rmk": ""}}, "ENBV": {"ats": {"hr": "MON - FRI: 0600 - 2030 (0500 - 1930), SAT: NIL, SUN: 1200 - 2030 (1100 - 1930)", "rmk": "HOSP/SAR outside HR OF OPS AVBL O/R 40 MIN prior notice via Polaris ACC Bodø"}, "fuel": {"hr": "AVBL O/R", "rmk": ""}}, "ENCN": {"ats": {"hr": "MON - FRI: 0510 - 2215 (0410 - 2115), SAT: 0510 - 2110 (0410 - 2010), SUN: 0510 - 2215 (0410 - 2115)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0430 - 1830 (0330 - 1730), SAT: 0430 - 1700 (0330 - 1600), SUN: 0430 - 1830 (0330 - 1730)", "rmk": "JET A1: Outside opening HR O/R prior to closing. Tlf (+47) 38063416/ (+47) 22 54 00 50."}}, "ENDU": {"ats": {"hr": "MON - FRI: 0520 - 2200 (0420 - 2100), SAT: 0800 - 1710 (0700 - 1610), SUN: 0850 - 2230 (0750 - 2130)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0430 - 1730 (0330 - 1630), SAT: 0800 - 1100 (0700 - 1000), SUN: 1100 - 1900 (1000 - 1800)", "rmk": "Outside these HR contact Air BP (+47) 458 72 157. Surcharge applies."}}, "ENEG": {"ats": {"hr": "No ATS service provided", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0600 - 1500 (0500 - 1400), SAT - SUN: NIL", "rmk": "RMK: EXC holidays"}}, "ENEV": {"ats": {"hr": "H24", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0430 - 1930 (0330 - 1830), SAT: 0430 - 1330 (0330 - 1230), SUN: 0830 - 1930 (0730 - 1830)", "rmk": "Within HR of OPS (+47) 47 78 79 58"}}, "ENFL": {"ats": {"hr": "MON - FRI: 0400 - 2130 (0300 - 2030), SAT: 1200 - 1215 (1100 - 1115) / 1530 - 1700 (1430 - 1600), SUN: 1200 - 1215 (1100 - 1115)/ 1630 - 2130 (1530 - 2030)", "rmk": ""}, "fuel": {"hr": "MON - THU: 0510 - 2030 (0410 - 1930), FRI: 0615 - 2030 (0515 - 1930), SAT: 1225 - 1720 (11:25 - 1620), SUN: 0815 - 0835 (0715 - 0735) / 1235 - 2030 (1135 - 1930)", "rmk": ""}}, "ENGK": {"ats": {"hr": "No ATS provided", "rmk": ""}, "fuel": {"hr": "NIL", "rmk": "For fuel call (+47 911 69 727)"}}, "ENGM": {"ats": {"hr": "H24", "rmk": ""}, "fuel": {"hr": "JET A1: H24, F34: H24, 100LL: MON - FRI: AVBL O/R 0500 - 2300 (0400 - 2200), SAT: 0800 - 1700 (0700 - 1600), SUN: 1000 - 1900 (0900 - 1800)", "rmk": ""}}, "ENHD": {"ats": {"hr": "MON - FRI: 0520 - 2100 (0420 - 2000), SAT: 0600 - 2100 (0500 - 2000), SUN: 0700 - 2230 (0600 - 2130)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0500 - 1730 (0400 - 1630), SAT: 0530 - 1015 (0430 - 0915), SUN: 0645 - 0730 (0545 - 0630) / 1345 - 1930 (1245 - 1830)", "rmk": "AVBL OR Andersen Airport Service (+47) 52 84 04 70"}}, "ENHF": {"ats": {"hr": "MON - FRI: 0505 - 2310 (0405 - 2210), SAT: 1150 - 1400 (1050 - 1300), SUN: 0935 - 2310 (0835 - 2210)", "rmk": "HOSP/SAR OUTSIDE HR OF OPS AVBL O/R VIA POLARIS ACC TEL (+47) 75 58 29 57"}, "fuel": {"hr": "MON - FRI: 0505 - 2310 (0405 - 2210), SAT: 1150 - 1400 (1050 - 1300), SUN: 0935 - 2310 (0835 - 2210)", "rmk": "AVBL on 40 MIN REQ via Polaris ACC"}}, "ENHK": {"ats": {"hr": "MON - FRI: 0630 - 2000 (0530 - 1900), SAT: NIL, SUN: 1330 - 1530 (1230 - 1430) / 1830 - 2000 (1730 - 1900)", "rmk": "Extended HR of OPS AVBL for HOSP/SAR O/R via Polaris ACC Bodø"}, "fuel": {"hr": "NIL", "rmk": ""}}, "ENHV": {"ats": {"hr": "MON - FRI: 0435 - 2205 (0335 - 2105), SAT: CLSD, SUN: 1130 - 13:30 (1030 - 1230) / 2030 - 2205 (1930 - 2105)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0435 - 2205 (0335 - 2105), SAT: CLOSED, SUN: 1130 - 1330 (1030 - 1230) / 2030 - 2205 (1930 - 2105)", "rmk": ""}}, "ENKB": {"ats": {"hr": "MON - FRI: 0515 - 2200 (0415 - 2100), SAT: 0900 - 1600 (0800 - 1500), SUN: 1100 - 2200 (1000 - 2100)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0545 - 1800 (0445 - 1700), SAT: 0600 - 0900 (0500 - 0800) / 1400 - 1700 (1300 - 1600), SUN: 1130 - 1600 (1030 - 1500)", "rmk": "Within HR of OPS Shell (+47) 90 76 68 49."}}, "ENKJ": {"ats": {"hr": "No ATS service provided", "rmk": "AD AVBL for VFR 0700 - 2100 (0600 - 2000). PPR for all TFC."}, "fuel": {"hr": "NIL", "rmk": ""}}, "ENKR": {"ats": {"hr": "MON - FRI: 0330 - 2315 (0230 - 2215), SAT: 0830 - 1810 (0730 - 1710), SUN: 0900 - 2315 (0800 - 2215)", "rmk": ""}, "fuel": {"hr": "MON - TUE: 0415 - 1800 (0315 - 1700), WED - FRI: 0415 - 2000 (0315 - 1900), SAT: 0800 - 1100 (0700 - 1000) / 1700 - 1800 (1600 - 1700), SUN: 0900 - 1930 (0800 - 1830)", "rmk": "AVBL O/R Air BP Norway AS (+47) 905 22 091. 30 MIN response time. Not AVBL outside HR of OPS."}}, "ENLK": {"ats": {"hr": "MON - FRI: 0535 - 2255 (0435 - 2155), SAT: 0750 - 1610 (0650 - 1510), SUN: 1000 - 1750 (0900 - 1650) / 1920 - 2255 (1820 - 2155)", "rmk": ""}, "fuel": {"hr": "AVBL O/R", "rmk": ""}}, "ENMH": {"ats": {"hr": "MON - FRI: 0405 - 1220 (0305 - 1120) / 1610 - 2320 (1510 - 2220), SAT: NIL, SUN: 1705 - 2320 (1605 - 2220)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0405 - 1220 (0305 - 1120) / 1610 - 2320 (1510 - 2220), SAT: NIL, SUN: 1705 - 2320 (1605 - 2220)", "rmk": ""}}, "ENML": {"ats": {"hr": "MON - FRI: 0505 - 2100 (0405 - 2000), SAT: 0600 - 1500 (0500 - 1400), SUN: 0930 - 2250 (0830 - 2150)", "rmk": "HOSP/SAR outside HR of OPS AVBL O/R 40 MIN prior notice via Polaris ACC"}, "fuel": {"hr": "MON - THU: 0430 - 1630 (0330 - 1530), FRI: 0430 - 1730 (0330 - 1630), SAT: 0600 - 1430 (0500 - 1330), SUN: 1030 - 1630 (0930 - 1530)", "rmk": "Outside opening HR O/R via Molde Fuel Service (+47) 46 51 53 41"}}, "ENMS": {"ats": {"hr": "MON - FRI: 0350 - 2050 (0250 - 1950), SAT: 0820 - 1450 (0720 - 1350), SUN: 1020 - 2050 (0920 - 1950)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0350 - 2050 (0250 - 1950), SAT: 0820 - 1450 (0720 - 1350), SUN: 1020 - 2050 (0920 - 1950)", "rmk": ""}}, "ENNA": {"ats": {"hr": "MON - FRI: 0520 - 2250 (0420 - 2150), SAT: 1100 - 1530 (1000 - 1430), SUN: 1040 - 2250 (0940 - 2150)", "rmk": "AVBL O/R H24 for charterflights"}, "fuel": {"hr": "MON - FRI: 0500 - 2315 (0400 - 2215), SAT: 0830 - 1300 (0730 - 1200), SUN: 1200 - 2315 (1100 - 2215)", "rmk": "Outside HR of OPS O/R AFSN (+47) 482 89 103 or Air BP +971 50 453 6032."}}, "ENNM": {"ats": {"hr": "MON - FRI: 0520 - 2155 (0420 - 2055), SAT: CLOSED, SUN: 0930-1050 (0830 - 0950) / 1400-2155 (1300 - 2055)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0500 - 2155 (0400 - 2055), SAT: CLOSED, SUN: 0830-1600 (0730 - 1500) / 2030 - 2200 (1930 - 2100)", "rmk": "Outside HR of SER: Air BP (+44) 20 3401 7247"}}, "ENNO": {"ats": {"hr": "MON - FRI: 0500 - 1700 (0400 - 1600), SAT: 1000 - 1500 (0900 - 1400), SUN: 1000 - 1430 (0900 - 1330)", "rmk": "Public HOL excluded"}, "fuel": {"hr": "AVBL H24", "rmk": "REF ENNO AD 2.20"}}, "ENOL": {"ats": {"hr": "TWR: H24, APP: MON - FRI: 0800 - 1430 (0700 - 1330), SAT - SUN: NIL", "rmk": "Outside detailed APP HR, APP service provided by TWR"}, "fuel": {"hr": "MON - FRI: 0630 - 1500 (0530 - 1400) EXC holidays, SAT - SUN: NIL", "rmk": "Outside HR of OPS, O/R (+47) 72 51 24 83 / (+47) 458 74 833. For CIV, payment by Air BP card only."}}, "ENOV": {"ats": {"hr": "MON - FRI: 0445 - 2230 (0345 - 2130), SAT: 0645 - 1700 (0545 - 1600), SUN: 0915 - 1715 (0815 - 1615) / 1845 - 2230 (1745 - 2130)", "rmk": "HOSP/SAR outside HR of OPS AVBL O/R VIA Polaris ACC Bodø"}, "fuel": {"hr": "MON - FRI: 0445 - 2230 (0345 - 2130), SAT: 0645 - 1700 (0545 - 1600), SUN: 0915 - 1715 (0815 - 1615) / 1845 - 2230 (1745 - 2130)", "rmk": "HOSP/SAR outside HR of OPS AVBL O/R VIA Polaris ACC Bodø. AVGAS 100 LL AVBL after coordination with aero club, REF AD 2.20."}}, "ENRA": {"ats": {"hr": "MON - FRI: 0500 - 2210 (0400 - 2110), SAT: 0800 - 1500 (0700 - 1400), SUN: 1225 - 2210 (1125 - 2110)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0500 - 2210 (0400 - 2110), SAT: 0800 - 1500 (0700 - 1400), SUN: 1225 - 2210 (1125 - 2110)", "rmk": ""}}, "ENRE": {"ats": {"hr": "O/R", "rmk": ""}, "fuel": {"hr": "NIL", "rmk": ""}}, "ENRM": {"ats": {"hr": "MON - FRI: 0505 - 1325 (0405 - 1225) / 1340 - 2120 (1240 - 2020), SAT: 0940 - 1015 (0840 - 0915), SUN: 1205 - 2120 (1105 - 2020)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0505 - 1325 (0405 - 1225) / 1340 - 2120 (1240 - 2020), SAT: 0940 - 1015 (0840 - 0915), SUN: 1205 - 2120 (1105 - 2020)", "rmk": ""}}, "ENRO": {"ats": {"hr": "MON - FRI: 0530 - 1515 (0430 - 1415) / 1740 - 1810 (1640 - 1710), SAT: CLOSED, SUN: 1100 - 1820 (1000 - 1720)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0530 - 1515 (0430 - 1415) / 1740 - 1810 (1640 - 1710), SAT: CLOSED, SUN: 1100 - 1820 (1000 - 1720)", "rmk": "Within HR of OPS Avinor (+47) 911 97 919"}}, "ENRS": {"ats": {"hr": "MON: 0650 - 0830 (0550 - 0730) / 1830 - 2105 (1730 - 2005), TUE - THU: 0650 - 2105 (0550 - 2005), FRI: 0650 - 0830 (0550 - 0730) / 1830 - 2105 (1730 - 2005), SAT: 0650 - 1000 (0550 - 0900), SUN: 1830 - 2105 (1730 - 2005)", "rmk": ""}, "fuel": {"hr": "H24", "rmk": "Self service outside of scheduled traffic. Air BP sales out of hours +44 203 401 7247"}}, "ENRY": {"ats": {"hr": "WEEK 33 - 18, MON: 0700 - 1900 (0600 - 1800), TUE - THU: 0700 - 2300 (0600 - 2200), FRI: 0700 - 1900 (0600 - 1800), SAT: 0800 - 1500 (0700 - 1400), SUN: NIL, WEEK 19 - 32, MON - FRI: 0700 - 1900 (0600 - 1800), SAT - SUN: 0900 - 1300 (0800 - 1200)", "rmk": "Outside HR of OPS, O/R to WingOps"}, "fuel": {"hr": "MON - FRI: 0700 - 1500 (0600 - 1400) EXC holidays, SAT - SUN: NIL", "rmk": "Outside HR of OPS, O/R to WingOps"}}, "ENSB": {"ats": {"hr": "H24", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0830 - 1645 (0730 - 1545), SAT - SUN: 0830 - 1415 (0730 - 1315)", "rmk": "Excluding 24 and 25 DEC. Extended opening hours can be requested and will cause an additional cost."}}, "ENSD": {"ats": {"hr": "MON - FRI: 0440 - 2155 (0340 - 2055), SAT: 0640 - 1630 (0540 - 1530), SUN: 1030 - 1145 (0930 - 1045) / 1615 - 2155 (1515 - 2055)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0440 - 2155 (0340 - 2055), SAT: 0640 - 1630 (0540 - 1530), SUN: 1030 - 1145 (0930 - 1045) / 1615 - 2155 (1515 - 2055)", "rmk": ""}}, "ENSG": {"ats": {"hr": "MON - FRI: 0515 - 2100 (0415 - 2000), SAT: 0630 - 1130 (0530 - 1030) / 1450 - 1530 (1350 - 1430), SUN: 1300 - 2130 (1200 - 2030)", "rmk": "OPS HR above are core hours, REF NOTAM for possible adjustments."}, "fuel": {"hr": "MON - FRI: 0515 - 2100 (0415 - 2000), SAT: 0515 - 0915 (0415 - 0815), SUN: 1600 - 2100 (1500 - 2000)", "rmk": "OPS HR above are core hours, REF NOTAM for possible adjustments. For GA O/R via ATS"}}, "ENSH": {"ats": {"hr": "MON - FRI: 0535 - 2010 (0435 - 1910), SAT: 0955 - 1750 (0855 - 1650), SUN: 0955 - 2010 (0855 - 1910)", "rmk": ""}, "fuel": {"hr": "MON - TUE: 0400 - 2250 (0300 - 2150), WED - FRI: 0535 - 2250 (0435 - 2150), SAT: 0930 - 1250 (0830 - 1150), SUN: 1145 - 2250 (1045 - 2150)", "rmk": ""}}, "ENSK": {"ats": {"hr": "MON - WED: 0515 - 2015 (0415 - 1915), THU - FRI: 0450 - 2015 (0350 - 1915), SAT: 1000 - 1500 (0900 - 1400), SUN: 1000 - 2015 (0900 - 1915)", "rmk": ""}, "fuel": {"hr": "No detailed OPS HR, AVBL O/R", "rmk": ""}}, "ENSO": {"ats": {"hr": "MON - FRI: 0500 - 1835 (0400 - 1735), SAT: CLOSED, SUN: 1045 - 1915 (0945 - 1815)", "rmk": "Outside opening HR HOSP/SAR OR. Extend HR of OPS OR TEL (+47) 53 40 37 13."}, "fuel": {"hr": "MON - FRI: 0500 - 1835 (0400 - 1735), SAT: CLOSED, SUN: 1045 - 1915 (0945 - 1815)", "rmk": "Outside HR of OPS TEL (+47) 913 44 862."}}, "ENSR": {"ats": {"hr": "MON - FRI: 0445 - 1945 (0345 - 1845), SAT: NIL, SUN: 1115 - 1315 (1015 - 1215) / 1645 - 1945 (1545 - 1845)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0445 - 1945 (0345 - 1845), SAT: NIL, SUN: 1115 - 1315 (1015 - 1215) / 1645 - 1945 (1545 - 1845)", "rmk": ""}}, "ENSS": {"ats": {"hr": "MON - FRI: 0700 - 1845 (0600 - 1745), SAT: NIL, SUN: 1045 - 1300 (0945 - 1200) / 1700 - 1845 (1600 - 1745)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0700 - 1845 (0600 - 1745), SAT: NIL, SUN: 1045 - 1300 (0945 - 1200) / 1700 - 1845 (1600 - 1745)", "rmk": ""}}, "ENST": {"ats": {"hr": "MON - FRI: 0500 - 2215 (0400 - 2115), SAT: 0930 - 1300 (0830 - 1200), SUN: 1345 - 2215 (1245 - 2115)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0500 - 2215 (0400 - 2115), SAT: 0930 - 1300 (0830 - 1200), SUN: 1345 - 2215 (1245 - 2115)", "rmk": ""}}, "ENTC": {"ats": {"hr": "H24", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0400 - 2200 (0300 - 2100), SAT: 0400 - 2000 (0300 - 1900), SUN: 0500 - 2200 (0400 - 2100)", "rmk": "Outside HR of OPS Flytanking AS (+47) 992 41 531. Surcharge applies outside HR of OPS."}}, "ENTO": {"ats": {"hr": "MON - SAT: 0500 - 2200 (0400 - 2100), SUN: 0600 - 2200 (0500 - 2100)", "rmk": ""}, "fuel": {"hr": "Fuel truck AVBL from first SCHED DEP until last SCHED DEP", "rmk": "Within HR of OPS: Fuel coordinator (+47) 33 48 63 44. Outside HR of OPS: Fuel coordinator (+47) 905 71 097 / (+47) 907 32 943"}}, "ENVA": {"ats": {"hr": "H24", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0430 - 2100 (0330 - 2000), SAT: 0430 - 1800 (0330 - 1700), SUN: 0430 - 2100 (0330 - 2000)", "rmk": "JET A1 outside HR of OPS, Fuel coordinator TEL (+47) 74 83 46 40/ (+47) 911 76 530. Surcharge applies outside HR of OPS."}}, "ENVD": {"ats": {"hr": "MON - FRI: 0330 - 2325 (0230 - 2225), SAT: 0945 - 1735 (0845 - 1635), SUN: 1230 - 1430 (1130 - 1330) / 1600 - 2325 (1500 - 2225)", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0330 - 2325 (0230 - 2225), SAT: 0945 - 1730 (0845 - 1630), SUN: 1230 - 1415 (1130 - 1315) / 1630 - 2325 (1530 - 2225)", "rmk": ""}}, "ENZV": {"ats": {"hr": "H24", "rmk": ""}, "fuel": {"hr": "MON - FRI: 0400 - 2100 (0300 - 2000), SAT: 0400 - 1800 (0300 - 1700), SUN: 0400 - 2100 (0300 - 2000)", "rmk": "Within HR of OPS (+47) 51 64 79 99 / (+47) 905 66 519. Outside HR of OPS: (+47) 905 66 520."}}}};
 
 // ═══════════════════════════════════════════════════════════
 // AIRPORTS DATABASE
@@ -369,6 +518,124 @@ function fmtTime(mins) {
   const m = String(t%60).padStart(2,'0');
   return (d>0?`+${d}d `:'')+`${h}:${m}`;
 }
+// ═══════════════════════════════════════════════════════════
+// PLANNING DATE, TIME ZONE, OPENING HOURS + NOTAM DATA
+// ═══════════════════════════════════════════════════════════
+let PLAN_ZONE = (() => { try { return localStorage.getItem('ferry:zone') || 'local'; } catch(e) { return 'local'; } })();
+const zoneTz = () => PLAN_ZONE === 'utc' ? 'UTC' : 'Europe/Oslo';
+const zoneLbl = () => PLAN_ZONE === 'utc' ? 'UTC' : 'LT';
+function dateIn(d, tz) { return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit' }).format(d); }
+function setToday() { document.getElementById('plan-date').value = dateIn(new Date(), zoneTz()); markStale(); }
+function setZone(z) { PLAN_ZONE = z; try { localStorage.setItem('ferry:zone', z); } catch(e) {} updateZoneUI(); markStale(); }
+function updateZoneUI() {
+  document.getElementById('tz-local').classList.toggle('active', PLAN_ZONE === 'local');
+  document.getElementById('tz-utc').classList.toggle('active', PLAN_ZONE === 'utc');
+  document.getElementById('dep-zone-lbl').textContent = `(${zoneLbl()})`;
+}
+// wall-clock minutes on a date in the planning zone → absolute time
+function zonedMs(dateStr, mins) {
+  const [y,m,d] = dateStr.split('-').map(Number), wall = Date.UTC(y, m-1, d, 0, mins);
+  if (PLAN_ZONE === 'utc') return wall;
+  let g = wall; for (let k = 0; k < 3; k++) g = wall - OpsHours.osloOffset(new Date(g)) * 60000;
+  return g;
+}
+function fmtAbs(d) {
+  const tz = zoneTz(), plan = document.getElementById('plan-date').value;
+  const hm = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour:'2-digit', minute:'2-digit', hourCycle:'h23' }).format(d);
+  const days = Math.round((Date.parse(dateIn(d, tz)) - Date.parse(plan)) / 86400000);
+  return (days > 0 ? `+${days}d ` : days < 0 ? `${days}d ` : '') + hm;
+}
+const hm = d => new Intl.DateTimeFormat('en-GB', { timeZone: zoneTz(), hour:'2-digit', minute:'2-digit', hourCycle:'h23' }).format(d);
+
+let OPS = null, OPS_P = {}, NOTAMS = null, NOTAM_STATE = 'loading';
+async function loadOpsData() {
+  try { const r = await fetch('data/ops_hours.json?v=' + Date.now(), { cache: 'no-store' }); if (!r.ok) throw 0; OPS = await r.json(); }
+  catch(e) { OPS = OPS_SNAPSHOT; }
+  OPS_P = {};
+  for (const [k, v] of Object.entries(OPS.fields)) OPS_P[k] = {
+    ats:  v.ats  ? OpsHours.parse(v.ats.hr,  v.ats.rmk,  'ats')  : null,
+    fuel: v.fuel ? OpsHours.parse(v.fuel.hr, v.fuel.rmk, 'fuel') : null };
+  try { const r = await fetch('data/notams.json?v=' + Date.now(), { cache: 'no-store' }); if (!r.ok) throw 0; NOTAMS = await r.json(); NOTAM_STATE = 'ok'; }
+  catch(e) { NOTAMS = null; NOTAM_STATE = 'missing'; }
+  if (document.getElementById('results-panel').style.display === 'block') calculate(true);
+}
+
+// ---------- advisories for one stop ----------
+function hoursText(p, d) {
+  if (!p) return 'No data';
+  if (p.type === 'h24') return 'H24';
+  if (p.type === 'none') return 'Not available';
+  if (p.type !== 'sched') return p.raw.length > 90 ? p.raw.slice(0, 88) + '…' : p.raw;
+  const per = OpsHours.periodsAsDates(p, d);
+  return per.length ? per.map(([a, b]) => `${hm(a)}–${hm(b)}`).join(', ') + ` ${zoneLbl()}` : 'Closed this day';
+}
+function stopAdvisories(i, wp, n) {
+  const icao = wp.icao, role = i === 0 ? 'dep' : i === n - 1 ? 'arr' : 'stop';
+  const ref = role === 'dep' ? wp.depAbs : wp.arrAbs;
+  const out = { html: '', bad: 0, warn: 0 };
+  const row = (k, cls, hours, msg, rmk) => { out.html += `<div class="adv-row st-${cls}"><span class="adv-k">${k}</span><span><span class="adv-h">${hours}</span>${msg ? `<span class="adv-m">${msg}</span>` : ''}${rmk ? `<span class="adv-r">${rmk}</span>` : ''}</span></div>`; if (cls === 'bad') out.bad++; if (cls === 'warn') out.warn++; };
+  const P = OPS_P[icao];
+  if (!P) row('HRS', 'info', 'Not in AIP AD 2.3', 'No published ATS/fuel hours for this field');
+  else {
+    // ATS: needed at every arrival and departure
+    const atsTimes = role === 'dep' ? [['departure', wp.depAbs]] : role === 'arr' ? [['arrival', wp.arrAbs]] : [['arrival', wp.arrAbs], ['departure', wp.depAbs]];
+    const a = P.ats;
+    if (a) {
+      const res = atsTimes.map(([lbl, d]) => ({ lbl, d, r: OpsHours.openAt(a, d) }));
+      const closed = res.filter(x => x.r.state === 'closed'), unk = res.filter(x => x.r.state === 'unknown');
+      const hol = res.map(x => x.r.holiday).find(Boolean);
+      if (closed.length) row('ATS', 'bad', hoursText(a, ref), '⚠ ATS closed at planned ' + closed.map(x => `${x.lbl} ${hm(x.d)}${x.r.reason ? ' (' + x.r.reason + ')' : ''}`).join(' and '), a.rmk);
+      else if (unk.length) row('ATS', 'warn', hoursText(a, ref), 'No fixed hours: check AIP / arrange in advance', a.rmk);
+      else if (hol) row('ATS', 'warn', hoursText(a, ref), `${hol}: hours may differ, check AIP AD 1.1 and NOTAM`, a.rmk);
+      else row('ATS', 'ok', hoursText(a, ref), `✓ Open at ${atsTimes.map(x => x[0]).join(' and ')}`);
+    }
+    // Fuel: needed during a ground stop (refuel after landing); shown for information at origin/destination
+    const fu = P.fuel;
+    if (fu) {
+      if (role !== 'stop') row('FUEL', 'info', hoursText(fu, ref), role === 'dep' ? 'Origin: not checked' : 'Destination: not checked');
+      else {
+        const r = OpsHours.openAt(fu, wp.arrAbs);
+        if (r.state === 'open') row('FUEL', r.holiday ? 'warn' : 'ok', hoursText(fu, ref), r.holiday ? `${r.holiday}: hours may differ, check AIP AD 1.1 and NOTAM` : '✓ Open at arrival');
+        else if (r.state === 'unknown') row('FUEL', 'warn', hoursText(fu, ref), 'No fixed hours: arrange fuel in advance', fu.rmk);
+        else {
+          const f = OpsHours.firstOpen(fu, wp.arrAbs, new Date(wp.depAbs.getTime() - 10 * 60000));
+          if (f) row('FUEL', 'warn', hoursText(fu, ref), `Closed at arrival ${hm(wp.arrAbs)}; opens ${hm(f)} during the ground stop`, fu.rmk);
+          else row('FUEL', 'bad', hoursText(fu, ref), `⚠ Fuel closed for the whole ground stop ${hm(wp.arrAbs)}–${hm(wp.depAbs)}${r.reason ? ' (' + r.reason + ')' : ''}`, fu.rmk);
+        }
+      }
+    }
+  }
+  // NOTAMs about ATS / fuel for this field around the planned times
+  if (NOTAM_STATE === 'missing') row('NTM', 'warn', 'NOTAM data not available', 'Check NOTAMs manually on <a href="https://www.ippc.no" target="_blank" rel="noopener">IPPC</a>');
+  else if (NOTAM_STATE === 'ok') {
+    const failed = (NOTAMS.errors || []).some(e => e.startsWith(icao + ':'));
+    const list = (NOTAMS.fields || {})[icao];
+    const from = new Date((wp.arrAbs || wp.depAbs).getTime() - 3600000), to = new Date((wp.depAbs || wp.arrAbs).getTime() + 3600000);
+    if (failed || !list) row('NTM', OPS_P[icao] ? 'warn' : 'info', failed ? 'NOTAM check failed for this field' : 'No NOTAM data for this field', 'Check <a href="https://www.ippc.no" target="_blank" rel="noopener">IPPC</a>');
+    else {
+      const hits = list.filter(x => (!x.start || new Date(x.start) <= to) && (!x.end || new Date(x.end) >= from));
+      hits.forEach(x => {
+        const e = x.end ? `${fmtAbs(new Date(x.end))}${x.estimated ? ' EST' : ''}` : 'PERM';
+        const body = (x.icao || x.text).replace(/</g, '&lt;');
+        out.html += `<div class="adv-row st-warn"><span class="adv-k">NTM</span><span><span class="adv-h">${x.id} · ${x.cats.map(c => c.toUpperCase()).join(' + ')} · ${x.start ? fmtAbs(new Date(x.start)) : ''}–${e}${x.schedule ? ` · ${x.schedule.replace(/</g, '&lt;')}` : ''}</span><span class="adv-m">NOTAM may change these hours: read it</span><details><summary>${(x.text || '').slice(0, 70).replace(/</g, '&lt;')}${(x.text || '').length > 70 ? '…' : ''}</summary><pre>${body}</pre></details></span></div>`;
+        out.warn++;
+      });
+      if (!hits.length) row('NTM', 'ok', 'No ATS/fuel NOTAMs', '✓ None for the planned times');
+    }
+  }
+  return out;
+}
+function dataNote() {
+  const o = OPS ? `Opening hours: AIP Norway AD 2.3, ${OPS.revised || ''}${OPS.snapshot ? ' (built-in copy)' : `, checked ${new Date(OPS.fetched).toISOString().slice(0, 10)}`}. Times are UTC in the AIP (winter, summer in brackets); weekdays taken as UTC days.` : '';
+  let nt = '';
+  if (NOTAM_STATE === 'ok') {
+    const age = (Date.now() - new Date(NOTAMS.fetched)) / 3600000;
+    nt = `<br>NOTAMs: ${NOTAMS.source}, updated ${new Date(NOTAMS.fetched).toISOString().slice(11, 16)} UTC${age > 3 ? ` <span style="color:var(--accent)">(${Math.round(age)} h old: check IPPC for the latest)</span>` : ''}.`
+       + (/Search/.test(NOTAMS.source) ? ' Domestic-only Norwegian NOTAMs may be missing: <a href="https://www.ippc.no" target="_blank" rel="noopener">IPPC</a> is the complete source.' : '');
+  } else nt = '<br>NOTAMs: not available. Check IPPC.';
+  return `<div class="data-note">${o}${nt}<br>Advisory only. Always confirm with AIP, NOTAM and the operator before flight.</div>`;
+}
+
 function fmtDuration(mins) {
   mins = Math.round(mins);
   const h=Math.floor(mins/60), m=mins%60;
@@ -595,7 +862,9 @@ function markStale() {
 // ═══════════════════════════════════════════════════════════
 // CALCULATION
 // ═══════════════════════════════════════════════════════════
-function calculate() {
+function calculate(quiet) {
+  const planDate = document.getElementById('plan-date').value;
+  if (!planDate) { alert('Enter a planning date first.'); return; }
   const w = routeWind();
   if (w.valid && appliedRouteWind !== `${w.dir}/${w.spd}`) applyRouteWind();
   const depStr = document.getElementById('dep-time').value;
@@ -623,12 +892,14 @@ function calculate() {
                track:Math.round(track),gs,timeH,timeMins:timeH*60,tripFuel,contFuel,minFuelDep,feasible});
   }
   const wps = [];
+  const base = zonedMs(planDate, depMins);
+  const abs = mins => new Date(base + (mins - depMins) * 60000);
   let currentTime = depMins;
   for (let i=0; i<waypoints.length; i++) {
     const icao = waypoints[i].icao;
     const isFirst=i===0, isLast=i===waypoints.length-1;
     if (isFirst) {
-      wps.push({icao,arrTime:null,arrFuel:null,depTime:currentTime,depFuel:MAX_FUEL,gstop:null});
+      wps.push({icao,arrTime:null,arrFuel:null,depTime:currentTime,depFuel:MAX_FUEL,gstop:null,arrAbs:null,depAbs:abs(currentTime)});
     } else {
       const leg=legs[i-1];
       const arrFuel=MAX_FUEL-leg.tripFuel;
@@ -637,13 +908,13 @@ function calculate() {
       if (!isLast) {
         const gs=waypoints[i].gstop;
         currentTime+=gs;
-        wps.push({icao,arrTime,arrFuel:Math.round(arrFuel),depTime:currentTime,depFuel:MAX_FUEL,gstop:gs});
+        wps.push({icao,arrTime,arrFuel:Math.round(arrFuel),depTime:currentTime,depFuel:MAX_FUEL,gstop:gs,arrAbs:abs(arrTime),depAbs:abs(currentTime)});
       } else {
-        wps.push({icao,arrTime,arrFuel:Math.round(arrFuel),depTime:null,depFuel:null,gstop:null});
+        wps.push({icao,arrTime,arrFuel:Math.round(arrFuel),depTime:null,depFuel:null,gstop:null,arrAbs:abs(arrTime),depAbs:null});
       }
     }
   }
-  renderResults(legs,wps);
+  renderResults(legs,wps,quiet);
   drawMap(legs,wps);
   const n = document.getElementById('stale-note'); if (n) n.remove();
   document.getElementById('timeline').style.opacity = '';
@@ -653,7 +924,7 @@ function calculate() {
 // ═══════════════════════════════════════════════════════════
 // RESULTS RENDER
 // ═══════════════════════════════════════════════════════════
-function renderResults(legs,wps) {
+function renderResults(legs,wps,quiet) {
   const panel=document.getElementById('results-panel');
   const tlEl=document.getElementById('timeline');
   const sumEl=document.getElementById('summary-bar');
@@ -662,11 +933,14 @@ function renderResults(legs,wps) {
   const totalTime=legs.reduce((a,l)=>a+l.timeMins,0);
   const totalFuel=legs.reduce((a,l)=>a+l.tripFuel,0);
   const allFeasible=legs.every(l=>l.feasible);
+  const adv = wps.map((wp,i) => stopAdvisories(i, wp, wps.length));
+  const nBad = adv.reduce((a,x)=>a+x.bad,0), nWarn = adv.reduce((a,x)=>a+x.warn,0);
   sumEl.innerHTML=`
     <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">Total distance<br><span style="font-size:18px;color:var(--white)">${totalDist} NM</span></div>
     <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">Block time<br><span style="font-size:18px;color:var(--white)">${fmtDuration(totalTime)}</span></div>
     <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">Total fuel burned<br><span style="font-size:18px;color:var(--white)">${Math.round(totalFuel)} kg</span></div>
     <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">Status<br><span style="font-size:14px;color:${allFeasible?'var(--ok)':'var(--danger)'};">${allFeasible?'✓ ALL LEGS OK':'⚠ RANGE EXCEEDED'}</span></div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">ATS / fuel hours<br><span style="font-size:14px;color:${nBad?'var(--danger)':nWarn?'var(--accent)':'var(--ok)'};">${nBad?`⚠ ${nBad} CONFLICT${nBad>1?'S':''}`:nWarn?`${nWarn} ADVISOR${nWarn>1?'IES':'Y'}`:'✓ ALL OPEN'}</span></div>
   `;
   let html='';
   for (let i=0; i<wps.length; i++) {
@@ -678,14 +952,14 @@ function renderResults(legs,wps) {
         ${i<wps.length-1?'<div class="tl-line"></div>':''}
       </div>
       <div class="tl-right">
-        <div class="tl-wp ${legWarn?'warn':''}">
+        <div class="tl-wp ${legWarn||adv[i].bad?'warn':''}">
           <div class="tl-icao">${wp.icao}</div>
           <div class="tl-apname">${ap?.name||''}</div>
           <div class="tl-times">
             ${wp.arrTime!==null?`
               <div class="tl-time-item">
                 <span class="tl-time-label">Arrival</span>
-                <span class="tl-time-val">${fmtTime(wp.arrTime)}</span>
+                <span class="tl-time-val">${fmtAbs(wp.arrAbs)}</span>
               </div>
               <div class="tl-time-item">
                 <span class="tl-time-label">Fuel arr.</span>
@@ -696,7 +970,7 @@ function renderResults(legs,wps) {
               ${wp.arrTime!==null?`<div class="tl-time-item"><span class="tl-time-label">Gnd stop</span><span class="tl-time-val">${wp.gstop} min</span></div>`:''}
               <div class="tl-time-item">
                 <span class="tl-time-label">Departure</span>
-                <span class="tl-time-val">${fmtTime(wp.depTime)}</span>
+                <span class="tl-time-val">${fmtAbs(wp.depAbs)}</span>
               </div>
               <div class="tl-time-item">
                 <span class="tl-time-label">Fuel dep.</span>
@@ -704,6 +978,7 @@ function renderResults(legs,wps) {
               </div>
             `:''}
           </div>
+          <div class="adv">${adv[i].html}</div>
         </div>
         ${leg?`<div class="tl-leg">
           <div class="tl-leg-info">
@@ -719,8 +994,8 @@ function renderResults(legs,wps) {
       </div>
     </div>`;
   }
-  tlEl.innerHTML=html;
-  panel.scrollIntoView({behavior:'smooth',block:'start'});
+  tlEl.innerHTML=html + dataNote();
+  if (!quiet) panel.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -938,6 +1213,8 @@ function renderExcluded() {
 // ═══════════════════════════════════════════════════════════
 renderRoute();
 drawMap();
+setToday(); updateZoneUI();
+loadOpsData();
 
 </script>
 </body>
