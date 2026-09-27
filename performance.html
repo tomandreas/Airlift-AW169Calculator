@@ -95,6 +95,11 @@
     .logo-block h1 { font-size: 38px; }
     .tool-tab { font-size: 9px; padding: 10px 4px; }
   }
+
+/* iPhone and iPad: Safari zooms into any form field with text under 16px. Touch screens only; desktop is unchanged. */
+@media (hover: none) and (pointer: coarse) {
+  input, select, textarea, input[class], select[class], textarea[class] { font-size: 16px !important; }
+}
 </style>
 </head>
 <body>

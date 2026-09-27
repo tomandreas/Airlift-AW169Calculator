@@ -165,10 +165,18 @@
   .opt-btn:hover { background: rgba(78,168,222,0.1); transform: translateY(-1px); }
 
   @media (max-width: 780px) {
-    .planner-layout { grid-template-columns: 1fr; }
+    .planner-layout { grid-template-columns: minmax(0, 1fr); }
+    .planner-layout > * { min-width: 0; }
+    .wp-header .ap-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .wp-header > button, .wp-header > .wp-remove { flex-shrink: 0; }
     .map-panel { position: static; }
     .settings-grid { grid-template-columns: 1fr; }
   }
+
+/* iPhone and iPad: Safari zooms into any form field with text under 16px. Touch screens only; desktop is unchanged. */
+@media (hover: none) and (pointer: coarse) {
+  input, select, textarea, input[class], select[class], textarea[class] { font-size: 16px !important; }
+}
 </style>
 </head>
 <body>

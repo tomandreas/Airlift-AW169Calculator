@@ -132,6 +132,11 @@ canvas.mimg{ display:block; flex-shrink:0; }
 .phase-i span{ color:var(--dim); font-size:12px; }
 @media (max-width:560px){ .cal{ gap:3px; } .cell{ padding:5px 0 4px; } .cell small{ display:none; } .calhead .m{ font-size:28px; } }
 footer{ color:var(--faint); font-size:11px; margin-top:22px; max-width:90ch; }
+
+/* iPhone and iPad: Safari zooms into any form field with text under 16px. Touch screens only; desktop is unchanged. */
+@media (hover: none) and (pointer: coarse) {
+  input, select, textarea, input[class], select[class], textarea[class] { font-size: 16px !important; }
+}
 </style>
 </head>
 <body>

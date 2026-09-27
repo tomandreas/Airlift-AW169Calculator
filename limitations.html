@@ -67,6 +67,11 @@
   .fig-cap { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-top:8px; }
   .row.hidden, .sub.hidden, .cat.hidden { display:none; }
   .no-results { display:none; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); text-align:center; padding:30px; }
+
+/* iPhone and iPad: Safari zooms into any form field with text under 16px. Touch screens only; desktop is unchanged. */
+@media (hover: none) and (pointer: coarse) {
+  input, select, textarea, input[class], select[class], textarea[class] { font-size: 16px !important; }
+}
 </style>
 </head>
 <body>
