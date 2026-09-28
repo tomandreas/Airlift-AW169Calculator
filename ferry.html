@@ -608,7 +608,7 @@ function stopAdvisories(i, wp, n) {
   return out;
 }
 function dataNote() {
-  const o = OPS ? `Opening hours: AIP Norway AD 2.3, ${OPS.revised || ''}${OPS.snapshot ? ' (built-in copy)' : `, checked ${new Date(OPS.fetched).toISOString().slice(0, 10)}`}. Times are UTC in the AIP (winter, summer in brackets); weekdays taken as UTC days.` : '';
+  const o = OPS ? `Opening hours: AIP Norway AD 2.3, ${OPS.revised || ''}${OPS.snapshot ? ' (built-in copy, not yet refreshed by the nightly job)' : `, checked ${new Date(OPS.fetched).toISOString().slice(0, 10)}${(Date.now() - new Date(OPS.fetched)) > 3*86400000 ? ` <span style="color:var(--accent)">(not checked for ${Math.floor((Date.now() - new Date(OPS.fetched)) / 86400000)} days: the nightly GitHub job may have stopped)</span>` : ''}`}. Times are UTC in the AIP (winter, summer in brackets); weekdays taken as UTC days.` : '';
   const route = [...new Set(waypoints.map(w => w.icao).filter(Boolean))].join(' ');
   const nt = `<br>NOTAMs are not checked automatically. Brief them on <a href="https://www.ippc.no" target="_blank" rel="noopener">IPPC</a> (Briefing → Aerodrome and/or FIR) for: <b style="color:var(--text)">${route}</b> <button type="button" class="today-btn" style="padding:2px 8px;margin-left:4px" onclick="copyRoute(this, '${route}')">Copy</button>`;
   return `<div class="data-note">${o}${nt}<br>Advisory only. Always confirm with AIP, NOTAM and the operator before flight.</div>`;
