@@ -1,7 +1,7 @@
 {
  "source": "https://aim-prod.avinor.no/no/OperationalHours/View/Index/82/ops_hrs.html",
  "revised": "AIRAC 03 SEP 2026",
- "fetched": "2026-09-27T13:28:36.450Z",
+ "fetched": "2026-09-28T07:22:19.725Z",
  "fields": {
   "ENAL": {
    "name": "Ålesund/Vigra",
@@ -586,5 +586,6 @@
     "rmk": "Within HR of OPS (+47) 51 64 79 99 / (+47) 905 66 519. Outside HR of OPS: (+47) 905 66 520."
    }
   }
- }
+ },
+ "changed": "2026-09-27T13:28:36.450Z"
 }
