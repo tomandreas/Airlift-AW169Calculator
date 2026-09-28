@@ -11,7 +11,7 @@
 <style>
 :root{
   --bg:#0b0e14; --surface:#121722; --surface2:#171e2b; --line:#232d3f; --text:#e4e8ef; --dim:#8791a3; --faint:#566074;
-  --amber:#e8a020; --blue:#4ea8de;
+  --amber:#e8a020; --blue:#4ea8de; --good:#5cc98a; --bad:#e5604f;
   --display:'Bebas Neue', 'Oswald', Impact, 'Arial Narrow', sans-serif;
   --mono:'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   color-scheme:dark; box-sizing:border-box;
@@ -483,6 +483,8 @@ const isDaylight = m => m.sunAlt > -6; // moon figure is only shown after civil 
 function mlxNum(v){ const m = v*1000; if(m <= 0) return '0'; if(m < 0.05) return '<0.1'; return m < 10 ? m.toFixed(1) : m.toFixed(0); }
 function mlx(v){ return mlxNum(v) + ' mlx'; }
 function moonLight(m){ return isDaylight(m) ? 'Daylight' : mlx(m.moonLux); }
+// Moonlight colour, judged on the value as displayed: green above 2.2 mlx, amber 1.5–2.2, red below 1.5
+function mlxColor(lux){ const v = parseFloat(mlxNum(lux)) || 0; return v > 2.2 ? 'var(--good)' : v >= 1.5 ? 'var(--amber)' : 'var(--bad)'; }
 function lxPlain(v){ // plain lux figure for small spaces
   if(v <= 0) return '0 lx';
   if(v < 1e-4) return '<0.0001 lx';
@@ -559,7 +561,7 @@ function nightsHTML(){
     return `<button class="night${n.d === st.date ? ' cur' : ''}" data-date="${n.d}" aria-label="${n.d}, maximum ${mlx(n.max)}">${head}
       <div class="ng">${moonGlyph(34, n.m)}<span>${(n.m.illum*100).toFixed(0)}%</span></div>
       <div class="nb">${nightBar(n)}<div class="nt"><span>${n.kind === 'dark' ? 'Dark all day' : 'Dusk ' + S.fmt(n.a,P)}</span>${n.maxT && n.max > 0 ? `<span class="br">Brightest ${S.fmt(n.maxT,P)}</span>` : ''}<span>${n.kind === 'dark' ? '' : 'Dawn ' + S.fmt(n.b,P)}</span></div></div>
-      <div class="nm"><b>${mlxNum(n.max)}</b><span>${n.max > 0 ? 'mlx max' : 'moon down'}</span></div></button>`;
+      <div class="nm"><b style="color:${mlxColor(n.max)}">${mlxNum(n.max)}</b><span>${n.max > 0 ? 'mlx max' : 'moon down'}</span></div></button>`;
   }).join('');
   const a = st.ap;
   return `<div class="hdr" style="margin-bottom:10px"><div class="title">${a.c ? `<span class="icao">${a.c}</span>` : ''}<span class="name">${a.n}</span></div>
@@ -567,7 +569,7 @@ function nightsHTML(){
     <p class="intro">Each bar runs from civil dusk to civil dawn. Blue shows when the moon is up; brighter blue is more moonlight. Select a night to open it on the dashboard.</p>
     <div class="legend"><span><i style="background:#0e1520;border:1px solid #232d3f"></i>Moon down</span><span><i style="background:#4ea8de;opacity:.3"></i>Dim</span><span><i style="background:#4ea8de"></i>Bright</span></div>
     ${rows}
-    <p class="mnote" style="margin-top:12px">Moon illumination only, clear sky. Maximum is the brightest moonlight during that night.</p>`;
+    <p class="mnote" style="margin-top:12px">Moon illumination only, clear sky. Maximum is the brightest moonlight during that night: green above 2.2 mlx, amber 1.5–2.2, red below 1.5.</p>`;
 }
 
 // ---------- moon calendar ----------
@@ -627,9 +629,9 @@ function render(){
       <div class="mgrid">
         <div class="phase">${m.phaseName}</div>
         <div><div class="k">Illuminated</div><div class="t">${(m.illum*100).toFixed(1)}%</div></div>
-        <div><div class="k">Moonlight</div><div class="t">${moonLight(m)}</div>${!isDaylight(m) && m.moonAlt <= -0.8 ? '<div class="t2">Below horizon</div>' : ''}</div>
+        <div><div class="k">Moonlight</div><div class="t"${isDaylight(m) ? '' : ` style="color:${mlxColor(m.moonLux)}"`}>${moonLight(m)}</div>${!isDaylight(m) && m.moonAlt <= -0.8 ? '<div class="t2">Below horizon</div>' : ''}</div>
         ${moonCell('Moonrise',ev,'moonrise')}${moonCell('Moonset',ev,'moonset')}
-        <div class="mnote">Moon illumination only, clear sky</div>
+        <div class="mnote">Moon illumination only, clear sky. Green above 2.2 mlx, amber 1.5–2.2, red below 1.5.</div>
       </div>
     </div>`;
   renderMoon($('card').querySelector('canvas.mimg'), W < 520 ? 150 : 190, m);
