@@ -47,9 +47,13 @@ if(import.meta.url === `file://${process.argv[1]}`){
   const res = await fetch(URL, { signal: AbortSignal.timeout(60000), headers: { 'User-Agent': 'AW169-tools opening-hours updater (GitHub Actions)' } });
   if(!res.ok) throw new Error(`HTTP ${res.status} from ${URL}`);
   const data = build(await res.text());
-  // only rewrite the file when the hours actually changed (keeps the git history clean)
+  // Write once per day even when nothing changed, so the page can show when the hours were last checked
   const prev = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : null;
-  if(prev && JSON.stringify(prev.fields) === JSON.stringify(data.fields) && prev.revised === data.revised){ console.log('No change'); process.exit(0); }
+  const same = prev && JSON.stringify(prev.fields) === JSON.stringify(data.fields) && prev.revised === data.revised;
+  const sameDay = prev && !prev.snapshot && String(prev.fetched || '').slice(0, 10) === data.fetched.slice(0, 10);
+  if(same && sameDay){ console.log('Already checked today, no change'); process.exit(0); }
+  if(same) data.changed = prev.changed || prev.fetched;          // keep the date the hours last changed
+  else data.changed = data.fetched;
   writeFileSync(OUT, JSON.stringify(data, null, 1));
-  console.log(`Wrote ${Object.keys(data.fields).length} airfields, ${data.revised}`);
+  console.log(same ? `Checked ${Object.keys(data.fields).length} airfields: no change (${data.revised})` : `Hours changed: wrote ${Object.keys(data.fields).length} airfields, ${data.revised}`);
 }
