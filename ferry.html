@@ -547,7 +547,7 @@ function fmtAbs(d) {
 }
 const hm = d => new Intl.DateTimeFormat('en-GB', { timeZone: zoneTz(), hour:'2-digit', minute:'2-digit', hourCycle:'h23' }).format(d);
 
-let OPS = null, OPS_P = {}, NOTAMS = null, NOTAM_STATE = 'loading';
+let OPS = null, OPS_P = {};
 async function loadOpsData() {
   try { const r = await fetch('data/ops_hours.json?v=' + Date.now(), { cache: 'no-store' }); if (!r.ok) throw 0; OPS = await r.json(); }
   catch(e) { OPS = OPS_SNAPSHOT; }
@@ -555,8 +555,6 @@ async function loadOpsData() {
   for (const [k, v] of Object.entries(OPS.fields)) OPS_P[k] = {
     ats:  v.ats  ? OpsHours.parse(v.ats.hr,  v.ats.rmk,  'ats')  : null,
     fuel: v.fuel ? OpsHours.parse(v.fuel.hr, v.fuel.rmk, 'fuel') : null };
-  try { const r = await fetch('data/notams.json?v=' + Date.now(), { cache: 'no-store' }); if (!r.ok) throw 0; NOTAMS = await r.json(); NOTAM_STATE = 'ok'; }
-  catch(e) { NOTAMS = null; NOTAM_STATE = 'missing'; }
   if (document.getElementById('results-panel').style.display === 'block') calculate(true);
 }
 
@@ -605,35 +603,25 @@ function stopAdvisories(i, wp, n) {
       }
     }
   }
-  // NOTAMs about ATS / fuel for this field around the planned times
-  if (NOTAM_STATE === 'missing') row('NTM', 'warn', 'NOTAM data not available', 'Check NOTAMs manually on <a href="https://www.ippc.no" target="_blank" rel="noopener">IPPC</a>');
-  else if (NOTAM_STATE === 'ok') {
-    const failed = (NOTAMS.errors || []).some(e => e.startsWith(icao + ':'));
-    const list = (NOTAMS.fields || {})[icao];
-    const from = new Date((wp.arrAbs || wp.depAbs).getTime() - 3600000), to = new Date((wp.depAbs || wp.arrAbs).getTime() + 3600000);
-    if (failed || !list) row('NTM', OPS_P[icao] ? 'warn' : 'info', failed ? 'NOTAM check failed for this field' : 'No NOTAM data for this field', 'Check <a href="https://www.ippc.no" target="_blank" rel="noopener">IPPC</a>');
-    else {
-      const hits = list.filter(x => (!x.start || new Date(x.start) <= to) && (!x.end || new Date(x.end) >= from));
-      hits.forEach(x => {
-        const e = x.end ? `${fmtAbs(new Date(x.end))}${x.estimated ? ' EST' : ''}` : 'PERM';
-        const body = (x.icao || x.text).replace(/</g, '&lt;');
-        out.html += `<div class="adv-row st-warn"><span class="adv-k">NTM</span><span><span class="adv-h">${x.id} · ${x.cats.map(c => c.toUpperCase()).join(' + ')} · ${x.start ? fmtAbs(new Date(x.start)) : ''}–${e}${x.schedule ? ` · ${x.schedule.replace(/</g, '&lt;')}` : ''}</span><span class="adv-m">NOTAM may change these hours: read it</span><details><summary>${(x.text || '').slice(0, 70).replace(/</g, '&lt;')}${(x.text || '').length > 70 ? '…' : ''}</summary><pre>${body}</pre></details></span></div>`;
-        out.warn++;
-      });
-      if (!hits.length) row('NTM', 'ok', 'No ATS/fuel NOTAMs', '✓ None for the planned times');
-    }
-  }
+  // NOTAMs are checked manually on IPPC (no open automated source for Norwegian NOTAMs)
+  row('NTM', 'info', 'Check NOTAMs on <a href="https://www.ippc.no" target="_blank" rel="noopener">IPPC</a>', 'Not checked automatically');
   return out;
 }
 function dataNote() {
   const o = OPS ? `Opening hours: AIP Norway AD 2.3, ${OPS.revised || ''}${OPS.snapshot ? ' (built-in copy)' : `, checked ${new Date(OPS.fetched).toISOString().slice(0, 10)}`}. Times are UTC in the AIP (winter, summer in brackets); weekdays taken as UTC days.` : '';
-  let nt = '';
-  if (NOTAM_STATE === 'ok') {
-    const age = (Date.now() - new Date(NOTAMS.fetched)) / 3600000;
-    nt = `<br>NOTAMs: ${NOTAMS.source}, updated ${new Date(NOTAMS.fetched).toISOString().slice(11, 16)} UTC${age > 3 ? ` <span style="color:var(--accent)">(${Math.round(age)} h old: check IPPC for the latest)</span>` : ''}.`
-       + (/Search/.test(NOTAMS.source) ? ' Domestic-only Norwegian NOTAMs may be missing: <a href="https://www.ippc.no" target="_blank" rel="noopener">IPPC</a> is the complete source.' : '');
-  } else nt = '<br>NOTAMs: not available. Check IPPC.';
+  const route = [...new Set(waypoints.map(w => w.icao).filter(Boolean))].join(' ');
+  const nt = `<br>NOTAMs are not checked automatically. Brief them on <a href="https://www.ippc.no" target="_blank" rel="noopener">IPPC</a> (Briefing → Aerodrome and/or FIR) for: <b style="color:var(--text)">${route}</b> <button type="button" class="today-btn" style="padding:2px 8px;margin-left:4px" onclick="copyRoute(this, '${route}')">Copy</button>`;
   return `<div class="data-note">${o}${nt}<br>Advisory only. Always confirm with AIP, NOTAM and the operator before flight.</div>`;
+}
+
+function copyRoute(btn, txt) {
+  const done = () => { btn.textContent = 'Copied'; setTimeout(() => btn.textContent = 'Copy', 1500); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(done, () => fallbackCopy(txt, done));
+  else fallbackCopy(txt, done);
+}
+function fallbackCopy(txt, done) {
+  const ta = document.createElement('textarea'); ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch(e) {} ta.remove();
 }
 
 function fmtDuration(mins) {
