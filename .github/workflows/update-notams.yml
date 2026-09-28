@@ -16,14 +16,11 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
-      - name: Fetch NOTAMs (FAA NOTAM Search; FAA API only if secrets are set)
-        env:
-          FAA_CLIENT_ID: ${{ secrets.FAA_CLIENT_ID }}          # optional
-          FAA_CLIENT_SECRET: ${{ secrets.FAA_CLIENT_SECRET }}  # optional
+          node-version: 24
+      - name: Fetch NOTAMs (FAA NOTAM Search)
         run: node scripts/update-notams.mjs
       - name: Commit if changed
         run: |
