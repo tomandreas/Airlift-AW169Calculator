@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="page-version" content="5">
 <title>Sun &amp; Moon — AW169 tools</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -97,12 +98,13 @@ canvas.mimg{ display:block; flex-shrink:0; }
 .intro{ color:var(--dim); font-size:12px; margin:0 0 12px; max-width:70ch; }
 .legend{ display:flex; gap:16px; font-size:11px; color:var(--dim); margin-bottom:14px; flex-wrap:wrap; }
 .legend i{ display:inline-block; width:22px; height:9px; border-radius:2px; margin-right:6px; vertical-align:middle; }
-.night{ display:grid; grid-template-columns:70px 64px minmax(0,1fr) 90px; gap:16px; align-items:center; width:100%; background:none; border:none; border-top:1px solid rgba(255,255,255,.06);
+.night{ display:grid; grid-template-columns:88px 64px minmax(0,1fr) 90px; gap:16px; align-items:center; width:100%; background:none; border:none; border-top:1px solid rgba(255,255,255,.06);
   color:var(--text); padding:12px 6px; text-align:left; font:inherit; cursor:pointer; border-radius:0; }
 .night:hover{ background:rgba(255,255,255,.025); border-color:rgba(255,255,255,.06); }
 .night.cur{ background:rgba(232,160,32,.07); }
 .nd span{ display:block; color:var(--dim); font-size:11px; }
-.nd b{ font-family:var(--display); font-weight:400; font-size:30px; line-height:1; padding-top:.1em; display:block; }
+.nd b{ font-family:var(--display); font-weight:400; font-size:30px; line-height:1; padding-top:.1em; display:block; white-space:nowrap; }
+.nd span{ white-space:nowrap; }
 .ng{ display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11px; color:var(--dim); }
 .nb svg{ display:block; width:100%; }
 .nt{ display:flex; justify-content:space-between; gap:8px; font-size:11px; color:var(--dim); margin-top:4px; white-space:nowrap; }
@@ -111,7 +113,7 @@ canvas.mimg{ display:block; flex-shrink:0; }
 .nm b{ display:block; font-size:22px; font-weight:500; line-height:1.1; }
 .nm span{ font-size:10.5px; color:var(--dim); }
 .nx{ grid-column:2/5; color:var(--dim); font-size:12px; }
-@media (max-width:560px){ .night{ grid-template-columns:44px 40px minmax(0,1fr) 56px; gap:8px; padding:10px 2px; } .nd b{ font-size:24px; } .nm b{ font-size:17px; } .nt .br, .nd .mo{ display:none; } .nt{ font-size:10px; }
+@media (max-width:560px){ .night{ grid-template-columns:60px 40px minmax(0,1fr) 56px; gap:8px; padding:10px 2px; } .nd b{ font-size:24px; } .nm b{ font-size:17px; } .nt .br, .nd .mo{ display:none; } .nt{ font-size:10px; }
   .tab{ padding:8px 10px 7px; font-size:12px; flex:1; } .card{ padding:16px; } .graph{ margin-left:-16px; margin-right:-16px; } }
 /* calendar */
 .calhead{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
@@ -138,6 +140,7 @@ footer{ color:var(--faint); font-size:11px; margin-top:22px; max-width:90ch; }
   input, select, textarea, input[class], select[class], textarea[class] { font-size: 16px !important; }
 }
 </style>
+<style id="pagever-css">.pagever{font:10px/1 "IBM Plex Mono",ui-monospace,Menlo,monospace;letter-spacing:.08em;color:#566074;opacity:.8;text-align:center;padding:18px 0 max(18px,env(safe-area-inset-bottom));user-select:none}</style>
 </head>
 <body>
 <div class="wrap">
@@ -369,7 +372,8 @@ footer{ color:var(--faint); font-size:11px; margin-top:22px; max-width:90ch; }
     const eq = A.Equator('Moon', date, obs, true, true);
     const h = A.Horizon(date, obs, eq.ra, eq.dec, null).altitude;
     if (h <= -0.8) return 0;
-    return moonLux(h, A.Illumination('Moon', date).phase_angle, eq.dist * 149597870.7);
+    // the USNO model's parallax term uses the geocentric distance (as stateAt does)
+    return moonLux(h, A.Illumination('Moon', date).phase_angle, A.GeoVector('Moon', date, true).Length() * 149597870.7);
   }
   function quarters(from, to) { // principal phases between two dates
     const out = []; let q = A.SearchMoonQuarter(from);
@@ -392,7 +396,7 @@ const $ = id => document.getElementById(id);
 const norm = s => s.toLowerCase().replace(/ø/g,'o').replace(/æ/g,'ae').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
 APS.forEach(a => a.norm = norm(`${a.c} ${a.n} ${a.m}`));
 
-const st = { loc:null, ap:null, date:null, minute:0, live:true, mode:'local', tab:'dash', cal:null };
+const st = { loc:null, ap:null, date:null, minute:0, live:true, mode:'local', tab:'dash', cal:null, outAnchor:null };
 const TABS = { '#nights':'nights', '#calendar':'cal' };
 st.tab = TABS[location.hash] || 'dash';
 function setAp(a){ st.ap = a; st.loc = { name:a.n, lat:a.la, lon:a.lo, tz:a.tz }; }
@@ -551,14 +555,19 @@ function nightBar(n){
     return `<rect x="${(i/k*W).toFixed(1)}" y="0" width="${(W/k+.6).toFixed(1)}" height="${H}" fill="#4ea8de" opacity="${op.toFixed(2)}"/>`; }).join('');
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" height="${H}" aria-hidden="true"><rect width="${W}" height="${H}" rx="3" fill="#0e1520"/>${segs}</svg>`;
 }
+// The outlook keeps its own start date after you open a night, so that night stays in the list
+function outAnchor(){ const a = st.outAnchor; return a && a.viewDate === st.date && a.lat === st.loc.lat && a.lon === st.loc.lon ? a : null; }
+const locMinutes = d => { const p = new Intl.DateTimeFormat('en-GB', { timeZone:st.loc.tz, hour:'2-digit', minute:'2-digit', hourCycle:'h23' }).format(d).split(':'); return (+p[0])*60 + (+p[1]); };
 function nightsHTML(){
-  const nights = nightsFrom(st.date), P = tzOf();
-  const wd = d => new Intl.DateTimeFormat('en-GB',{timeZone:'UTC',weekday:'short'}).format(new Date(d+'T12:00Z'));
-  const mon = d => new Intl.DateTimeFormat('en-GB',{timeZone:'UTC',month:'short'}).format(new Date(d+'T12:00Z'));
+  const A = outAnchor(), nights = nightsFrom(A ? A.start : st.date), P = tzOf(), curNight = A ? A.night : st.date;
+  const fu = (d, o) => new Intl.DateTimeFormat('en-GB',{ timeZone:'UTC', ...o }).format(new Date(d+'T12:00Z'));
   const rows = nights.map(n => {
-    const head = `<div class="nd"><span>${wd(n.d)}<span class="mo"> ${mon(n.d)}</span></span><b>${+n.d.slice(8)}</b></div>`;
-    if(n.kind === 'light') return `<button class="night" data-date="${n.d}">${head}<div class="nx">No civil dark: the sun stays above −6° all night</div></button>`;
-    return `<button class="night${n.d === st.date ? ' cur' : ''}" data-date="${n.d}" aria-label="${n.d}, maximum ${mlx(n.max)}">${head}
+    const d2 = S.addDays(n.d, 1), wdR = `${fu(n.d,{weekday:'short'})}–${fu(d2,{weekday:'short'})}`, dayR = `${+n.d.slice(8)}–${+d2.slice(8)}`;
+    const monR = n.d.slice(5,7) === d2.slice(5,7) ? fu(n.d,{month:'short'}) : `${fu(n.d,{month:'short'})}–${fu(d2,{month:'short'})}`;
+    const peak = n.maxT && n.max > 0 ? ` data-peak="${n.maxT.toISOString()}"` : '';
+    const head = `<div class="nd"><span>${wdR}</span><b>${dayR}</b><span class="mo">${monR}</span></div>`;
+    if(n.kind === 'light') return `<button class="night${n.d === curNight ? ' cur' : ''}" data-date="${n.d}" aria-label="Night ${dayR} ${monR}">${head}<div class="nx">No civil dark: the sun stays above −6° all night</div></button>`;
+    return `<button class="night${n.d === curNight ? ' cur' : ''}" data-date="${n.d}"${peak} aria-label="Night ${dayR} ${monR}, peak ${mlxNum(n.max)} mlx">${head}
       <div class="ng">${moonGlyph(34, n.m)}<span>${(n.m.illum*100).toFixed(0)}%</span></div>
       <div class="nb">${nightBar(n)}<div class="nt"><span>${n.kind === 'dark' ? 'Dark all day' : 'Dusk ' + S.fmt(n.a,P)}</span>${n.maxT && n.max > 0 ? `<span class="br">Brightest ${S.fmt(n.maxT,P)}</span>` : ''}<span>${n.kind === 'dark' ? '' : 'Dawn ' + S.fmt(n.b,P)}</span></div></div>
       <div class="nm"><b style="color:${mlxColor(n.max)}">${mlxNum(n.max)}</b><span>${n.max > 0 ? 'mlx max' : 'moon down'}</span></div></button>`;
@@ -566,7 +575,7 @@ function nightsHTML(){
   const a = st.ap;
   return `<div class="hdr" style="margin-bottom:10px"><div class="title">${a.c ? `<span class="icao">${a.c}</span>` : ''}<span class="name">${a.n}</span></div>
       <div class="right"><div class="sub">${st.mode === 'local' ? 'Local time' : 'UTC'}</div></div></div>
-    <p class="intro">Each bar runs from civil dusk to civil dawn. Blue shows when the moon is up; brighter blue is more moonlight. Select a night to open it on the dashboard.</p>
+    <p class="intro">Each bar runs from civil dusk to civil dawn. Blue shows when the moon is up; brighter blue is more moonlight. Each row is one night. Select it to open the dashboard at its brightest moment.</p>
     <div class="legend"><span><i style="background:#0e1520;border:1px solid #232d3f"></i>Moon down</span><span><i style="background:#4ea8de;opacity:.3"></i>Dim</span><span><i style="background:#4ea8de"></i>Bright</span></div>
     ${rows}
     <p class="mnote" style="margin-top:12px">Moon illumination only, clear sky. Maximum is the brightest moonlight during that night: green above 2.2 mlx, amber 1.5–2.2, red below 1.5.</p>`;
@@ -620,7 +629,7 @@ function render(){
         <div class="sub">${TYPE[a.t]}${a.m ? ', ' + a.m : ''}. ${dateLbl}</div></div>
       <div class="right"><div class="sub">${st.mode === 'local' ? 'Local, ' + tzShort(st.loc.tz, nowT) : 'UTC'}</div><div class="sub">${dayLen(ev.dayLengthMin)} daylight</div></div>
     </div>
-    <div class="graph">${pathSVG(ev, nowT, W, 170, true)}</div>
+    <div class="graph">${pathSVG(ev, nowT, W, Math.min(170, Math.round(W * 140 / 402)), true)}</div>
     <div class="hours">${hrs}</div>
     <div class="times4">${cellHTML('Civil dawn',ev,'civilDawn')}${cellHTML('Sunrise',ev,'sunrise')}${cellHTML('Sunset',ev,'sunset')}${cellHTML('Civil dusk',ev,'civilDusk')}</div>
     <div class="divider"></div>
@@ -679,7 +688,13 @@ document.querySelectorAll('.tab').forEach(b => { b.onclick = () => setTab(b.data
   b.onkeydown = e => { if(e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; const all = [...document.querySelectorAll('.tab')], i = all.indexOf(b);
     const nx = all[(i + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length]; nx.focus(); setTab(nx.dataset.tab); }; });
 $('card').addEventListener('click', e => {
-  const n = e.target.closest('[data-date]'); if(n){ st.live = false; $('now').classList.remove('on'); st.date = n.dataset.date; setTab('dash'); window.scrollTo({ top:0, behavior:'smooth' }); return; }
+  const n = e.target.closest('[data-date]'); if(n){
+    const A0 = outAnchor(), winStart = A0 ? A0.start : st.date, isNight = n.classList.contains('night');
+    st.live = false; $('now').classList.remove('on');
+    if(n.dataset.peak){ const pk = new Date(n.dataset.peak); st.date = S.localDateStr(pk, st.loc.tz); st.minute = locMinutes(pk); }
+    else st.date = n.dataset.date;
+    st.outAnchor = isNight ? { start:winStart, night:n.dataset.date, viewDate:st.date, lat:st.loc.lat, lon:st.loc.lon } : null;
+    setTab('dash'); window.scrollTo({ top:0, behavior:'smooth' }); return; }
   const c = e.target.closest('[data-cal]'); if(c){ const [y,m] = st.cal.split('-').map(Number); st.cal = new Date(Date.UTC(y, m-1 + (+c.dataset.cal), 1)).toISOString().slice(0,7); render(); }
 });
 window.addEventListener('hashchange', () => { st.tab = TABS[location.hash] || 'dash'; render(); });
@@ -687,5 +702,6 @@ let rt = 0; window.addEventListener('resize', () => { clearTimeout(rt); rt = set
 setInterval(() => { if(st.live) render(); }, 30000);
 render();
 </script>
+<div class="pagever" title="Page version 5">v5</div>
 </body>
 </html>

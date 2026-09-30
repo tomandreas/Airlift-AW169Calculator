@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="page-version" content="3">
 <title>AW169 — Operational Information &amp; Limitations</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -98,17 +99,11 @@
 @media (hover: none) and (pointer: coarse) {
   input, select, textarea, input[class], select[class], textarea[class] { font-size: 16px !important; }
 }
-
-.ai-warning{display:flex;align-items:flex-start;gap:10px;background:rgba(224,82,82,.08);
-    border:1px solid rgba(224,82,82,.45);border-radius:4px;padding:10px 14px;margin-bottom:16px;}
-.ai-warning .aw-icon{font-size:14px;line-height:1.4;color:var(--danger);}
-.ai-warning p{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.3px;line-height:1.5;color:var(--danger);}
-.ai-warning strong{color:var(--white);}
 </style>
+<style id="pagever-css">.pagever{font:10px/1 "IBM Plex Mono",ui-monospace,Menlo,monospace;letter-spacing:.08em;color:#566074;opacity:.8;text-align:center;padding:18px 0 max(18px,env(safe-area-inset-bottom));user-select:none}</style>
 </head>
 <body>
 <div class="page">
-  <div class="ai-warning"><span class="aw-icon">⚠</span><p><strong>Warning:</strong> Advisory information only, extracted from manuals by AI, always verify with the manuals and handbooks.</p></div>
   <header>
     <div class="logo-block">
       <h1>AW<span>169</span></h1>
@@ -184,9 +179,11 @@
         <tr data-f="ifr ara"><td>Decision range — LF-ARA<span class="cond">May only proceed beyond decision range if the pre-determined point is clearly identified and weather permits visual continuation to the landing site</span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="v">≥ 1.0<span class="u">NM</span></span></td><td class="r"><span class="src h">OM-H A.3</span></td></tr>
 
         <tr class="ghead"><td colspan="4">IFR — onshore approach</td></tr>
-        <tr data-f="ifr"><td>CAT I approach — lowest</td><td class="r"><span class="v">550<span class="u">m RVR</span></span></td><td class="r"><span class="v">200<span class="u">ft DH</span></span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="ifr"><td>CAT I approach — lowest</td><td class="r"><span class="v">500<span class="u">m RVR</span></span></td><td class="r"><span class="v">200<span class="u">ft DH</span></span></td><td class="r"><span class="src a">OM-A</span></td></tr>
         <tr data-f="ifr"><td>2D approach — floor</td><td class="r"><span class="v">800<span class="u">m</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="ifr"><td>RVR below 800 m<span class="cond">Permitted only with autopilot-coupled ILS / MLS / GLS / LPV</span></td><td class="r"><span class="v">800<span class="u">m</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
         <tr data-f="ifr"><td>Approach ban<span class="cond">No continuation past 1000 ft above aerodrome elevation</span></td><td class="r"><span class="v no">&lt; 550<span class="u">m RVR</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
+        <tr data-f="ifr"><td>Visual contact approach</td><td class="r"><span class="v">≥ 800<span class="u">m RVR</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
 
         <tr class="ghead"><td colspan="4">Take-off minima — IFR</td></tr>
         <tr data-f="ifr"><td>Two-pilot operations</td><td class="r"><span class="v">400<span class="u">m</span></span></td><td class="r"><span class="v dim">—</span></td><td class="r"><span class="src a">OM-A</span></td></tr>
@@ -298,7 +295,7 @@
     <tbody>
 <tr data-f="offshore"><td>Helideck wind, including gusts</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">≤ 60<span class="u">kt</span></span></td></tr>
 <tr data-f="offshore"><td>Wind for start and shutdown<span class="cond">AW169</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">≤ 40<span class="u">kt</span></span></td></tr>
-<tr data-f="hho"><td>Maximum relative wind in the hoisting area<span class="cond">RFM limit</span></td><td class="tags"><span class="tg t-hho">HHO</span></td><td class="r"><span class="v">45<span class="u">kt</span></span></td></tr>
+<tr data-f="hho"><td>Maximum relative wind in the hoisting area<span class="cond">Or RFM limitation, whichever is lower</span></td><td class="tags"><span class="tg t-hho">HHO</span></td><td class="r"><span class="v">55<span class="u">kt</span></span></td></tr>
 <tr data-f="all"><td>Maximum crosswind, CAT-A operations</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">20<span class="u">kt</span></span></td></tr>
 <tr data-f="all"><td>Tailwind, CAT-A operations</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v no">PROHIBITED</span></td></tr>
 <tr data-f="offshore"><td>Sea state<span class="cond">AW169 certificated ditching specification</span></td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">≤ 6</span></td></tr>
@@ -474,7 +471,7 @@
 <tr data-f="ara"><td>Transfer of control when pilot monitoring has best reference</td><td class="tags"><span class="tg t-ara">ARA</span></td><td class="r"><span class="v">"MY CONTROLS"</span></td></tr>
 <tr data-f="offshore"><td>Offshore take-off decision</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">"Defined Point" / "Committed"</span></td></tr>
 <tr data-f="all"><td>Fuel state</td><td class="tags"><span class="tg t-all">ALL</span></td><td class="r"><span class="v">"MINIMUM FUEL" / "MAYDAY FUEL"</span></td></tr>
-<tr data-f="police"><td>Blind calls onshore — VHF2<span class="cond">Radar tilt +4</span></td><td class="tags"><span class="tg t-pol">POLICE</span></td><td class="r"><span class="v">123.065</span></td></tr>
+<tr data-f="police"><td>Blind calls onshore — VHF2<span class="cond">Radar tilt +4</span></td><td class="tags"><span class="tg t-pol">POLICE</span></td><td class="r"><span class="v">123.5</span></td></tr>
 <tr data-f="offshore"><td>Mandatory radio calls</td><td class="tags"><span class="tg t-off">OFFSHORE</span></td><td class="r"><span class="v">Below 500<span class="u">ft</span></span></td></tr>
     </tbody>
   </table></div>
@@ -526,5 +523,6 @@ function apply(){
 }
 function doSearch(){ apply(); }
 </script>
+<div class="pagever" title="Page version 3">v3</div>
 </body>
 </html>
