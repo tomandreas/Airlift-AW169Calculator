@@ -1,7 +1,7 @@
 {
- "source": "https://aim-prod.avinor.no/no/OperationalHours/View/Index/82/ops_hrs.html",
- "revised": "AIRAC 03 SEP 2026",
- "fetched": "2026-09-30T08:35:58.098Z",
+ "source": "https://aim-prod.avinor.no/no/OperationalHours/View/Index/83/ops_hrs.html",
+ "revised": "AIRAC 01 OCT 2026",
+ "fetched": "2026-10-04T09:04:11.615Z",
  "fields": {
   "ENAL": {
    "name": "Ålesund/Vigra",
@@ -424,7 +424,7 @@
   "ENRY": {
    "name": "Rygge",
    "ats": {
-    "hr": "WEEK 33 - 18, MON: 0700 - 1900 (0600 - 1800), TUE - THU: 0700 - 2300 (0600 - 2200), FRI: 0700 - 1900 (0600 - 1800), SAT: 0800 - 1500 (0700 - 1400), SUN: NIL, WEEK 19 - 32, MON - FRI: 0700 - 1900 (0600 - 1800), SAT - SUN: 0900 - 1300 (0800 - 1200)",
+    "hr": "WEEK 33 - 18, MON - THU: 0700 - 2300 (0600 - 2200), FRI: 0700 - 1900 (0600 - 1800), SAT: 0800 - 1500 (0700 - 1400), SUN: CLOSED, WEEK 19 - 32, MON - FRI: 0700 - 1900 (0600 - 1800), SAT - SUN: 0900 - 1300 (0800 - 1200)",
     "rmk": "Outside HR of OPS, O/R to WingOps"
    },
    "fuel": {
@@ -587,5 +587,5 @@
    }
   }
  },
- "changed": "2026-09-27T13:28:36.450Z"
+ "changed": "2026-10-04T09:04:11.615Z"
 }
