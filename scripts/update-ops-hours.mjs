@@ -2,7 +2,7 @@
 // (ATS and fuel only). Run by .github/workflows/update-ops-hours.yml. No dependencies (Node 20+).
 import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 
-const URL = process.env.OPS_URL || 'https://aim-prod.avinor.no/no/OperationalHours/View/Index/82/ops_hrs.html';
+const URL = process.env.OPS_URL || 'https://aim-prod.avinor.no/no/OperationalHours/View/Index/83/ops_hrs.html';
 const OUT = process.env.OPS_OUT || 'data/ops_hours.json';
 const MIN_FIELDS = 40;   // sanity check: refuse to publish if a table comes back short
 
