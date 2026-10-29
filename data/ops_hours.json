@@ -1,7 +1,7 @@
 {
- "source": "https://aim-prod.avinor.no/no/OperationalHours/View/Index/83/ops_hrs.html",
- "revised": "AIRAC 01 OCT 2026",
- "fetched": "2026-10-28T08:35:06.354Z",
+ "source": "https://aim-prod.avinor.no/no/OperationalHours/View/Index/84/ops_hrs.html",
+ "revised": "AIRAC 29 OCT 2026",
+ "fetched": "2026-10-29T08:30:06.354Z",
  "fields": {
   "ENAL": {
    "name": "Ålesund/Vigra",
@@ -336,7 +336,7 @@
   "ENNO": {
    "name": "Notodden",
    "ats": {
-    "hr": "MON - FRI: 0500 - 1700 (0400 - 1600), SAT: 1000 - 1500 (0900 - 1400), SUN: 1000 - 1430 (0900 - 1330)",
+    "hr": "MON - THU: 0600 - 1800 (0500 - 1700), FRI: 0800 - 1500 (0700 - 1400), SAT: 1100 - 1600 (1000 - 1500), SUN: NIL",
     "rmk": "Public HOL excluded"
    },
    "fuel": {
@@ -358,11 +358,11 @@
   "ENOV": {
    "name": "Ørsta-Volda/Hovden",
    "ats": {
-    "hr": "MON - FRI: 0445 - 2230 (0345 - 2130), SAT: 0645 - 1700 (0545 - 1600), SUN: 0915 - 1715 (0815 - 1615) / 1845 - 2230 (1745 - 2130)",
+    "hr": "MON - FRI: 0445 - 2230 (0345 - 2130), SAT: 0945 - 1700 (0845 - 1600), SUN: 1100 - 2230 (1000 - 2130)",
     "rmk": "HOSP/SAR outside HR of OPS AVBL O/R VIA Polaris ACC Bodø"
    },
    "fuel": {
-    "hr": "MON - FRI: 0445 - 2230 (0345 - 2130), SAT: 0645 - 1700 (0545 - 1600), SUN: 0915 - 1715 (0815 - 1615) / 1845 - 2230 (1745 - 2130)",
+    "hr": "MON - FRI: 0445 - 2230 (0345 - 2130), SAT: 0945 - 1700 (0845 - 1600), SUN: 1100 - 2230 (1000 - 2130)",
     "rmk": "HOSP/SAR outside HR of OPS AVBL O/R VIA Polaris ACC Bodø. AVGAS 100 LL AVBL after coordination with aero club, REF AD 2.20."
    }
   },
@@ -545,7 +545,7 @@
   "ENTO": {
    "name": "Sandefjord/Torp",
    "ats": {
-    "hr": "MON - SAT: 0500 - 2200 (0400 - 2100), SUN: 0600 - 2200 (0500 - 2100)",
+    "hr": "MON - FRI: 0500 - 2200 (0400 - 2100), SAT: 0500 - 2100 (0400 - 2000), SUN: 0700 - 2200 (0600 - 2100)",
     "rmk": ""
    },
    "fuel": {
@@ -587,5 +587,5 @@
    }
   }
  },
- "changed": "2026-10-04T09:04:11.615Z"
+ "changed": "2026-10-29T08:30:06.354Z"
 }
