@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="page-version" content="1.7">
+<meta name="page-version" content="1.9">
 <title>LOOME Night Ops</title>
 <meta name="description" content="Sun, twilight and moonlight for any place in Norway.">
 <meta name="theme-color" content="#0b0e14">
@@ -1184,6 +1184,11 @@ const isDaylight = m => m.sunAlt > -6; // moon figure is only shown after civil 
 function mlxNum(v){ const m = v*1000; if(m <= 0) return '0'; if(m < 0.05) return '<0.1'; return m < 10 ? m.toFixed(1) : m.toFixed(0); }
 function mlx(v){ return mlxNum(v) + ' mlx'; }
 function moonLight(m){ return isDaylight(m) ? 'Daylight' : mlx(m.moonLux); }
+function moonPos(m){   // moon azimuth (true bearing) and refraction-corrected elevation for display
+  const az = Math.round(((m.moonAz % 360) + 360) % 360) % 360;
+  let el = Math.round(m.moonAltRefr * 10) / 10; if (el === 0) el = 0;   // never show a negative zero
+  return { az: az + '\u00b0T', el: (el < 0 ? '\u2212' : '+') + Math.abs(el).toFixed(1) + '\u00b0', below: el < 0 };
+}
 // Moonlight colour: green above 2.2 mlx, amber 1.5–2.2, red below 1.5 (judged on the value as displayed)
 function mlxColor(lux){ const v = parseFloat(mlxNum(lux)) || 0; return v > 2.2 ? 'var(--good)' : v >= 1.5 ? 'var(--amber)' : 'var(--bad)'; }
 const mlxStyle = m => isDaylight(m) ? '' : ` style="color:${mlxColor(m.moonLux)}"`;
@@ -1272,8 +1277,17 @@ function nearestTown(lat, lon){
   const brg = (Math.atan2(Math.sin(dl)*Math.cos(p2), Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl))*180/Math.PI + 360) % 360;
   return { i:bi, name:GEO.tName[bi], cc:GEO.tCC[bi], tz:GEO.tzs[GEO.tTz[bi]], km, dir:COMPASS[Math.round(brg/45)%8] };
 }
-function nameFor(lat, lon){ // closest town; add distance and direction when clearly outside it
-  const t = nearestTown(lat, lon);
+const AIRPORT_NM = 10;   // a large or medium airport this close names the place instead of the town
+function nearestAirport(lat, lon){
+  if(!GEO.bigAps) GEO.bigAps = GEO.aps.filter(a => a.type === 'L' || a.type === 'M');
+  const cl = Math.cos(lat*Math.PI/180); let best = 1e12, ba = null;
+  for(const a of GEO.bigAps){ const dy = a.lat-lat, dx = (a.lon-lon)*cl; const d = dx*dx+dy*dy; if(d < best){ best = d; ba = a; } }
+  return ba ? { a:ba, nm:distKm(lat, lon, ba.lat, ba.lon)/1.852 } : null;
+}
+function nameFor(lat, lon){ // closest large or medium airport within 10 NM, else the closest town; add distance and direction when clearly outside it
+  const t = nearestTown(lat, lon), ap = nearestAirport(lat, lon);
+  if(ap && ap.nm <= AIRPORT_NM){ const a = ap.a;
+    return { name:`${a.code} ${a.city || a.name}`, short:a.code, tz:a.tz || t.tz, meta:`Nearest airport ${a.name}, ${country(a.cc)} (${ap.nm.toFixed(1)} NM)` }; }
   const name = t.km <= 6 ? t.name : `${Math.round(t.km)} km ${t.dir} of ${t.name}`;
   return { name, short:t.name, tz:t.tz, meta:`Nearest town ${t.name}, ${country(t.cc)} (${t.km.toFixed(1)} km)` };
 }
@@ -1525,6 +1539,8 @@ function dashBody(){
       <div><div class="k">Moonlight</div><div class="t"${mlxStyle(m)}>${moonLight(m)}</div>${!isDaylight(m) && m.moonAlt <= -0.8 ? '<div class="t2">Below horizon</div>' : ''}</div>
       <div><div class="k">Moonrise</div><div class="t">${ev.moonrise ? tHTML(ev.moonrise,P) : `<span class="note">${moonText(ev,'moonrise')}</span>`}</div></div>
       <div><div class="k">Moonset</div><div class="t">${ev.moonset ? tHTML(ev.moonset,P) : `<span class="note">${moonText(ev,'moonset')}</span>`}</div></div>
+      <div><div class="k">Azimuth</div><div class="t">${moonPos(m).az}</div></div>
+      <div><div class="k">Elevation</div><div class="t">${moonPos(m).el}</div>${moonPos(m).below ? '<div class="t2">Below horizon</div>' : ''}</div>
       <div style="grid-column:1/3" class="k">Moon illumination only, clear sky.<br>Green above 2.2 mlx, amber 1.5–2.2, red below 1.5.</div></div></div></div>`;
 }
 function graphW(){ const r = $('app'); return clamp(Math.round(r ? r.clientWidth : 402), 280, 560); }
@@ -2004,6 +2020,6 @@ function init(){
 
 init();
 </script>
-<div class="pagever" role="contentinfo" title="Page version 1.7">v1.7</div>
+<div class="pagever" role="contentinfo" title="Page version 1.9">v1.9</div>
 </body>
 </html>

@@ -1,0 +1,299 @@
+{
+ "_note": "Entries up to 2026-09-30 were carried over from the log that had ended up in the LOOME repo. Their archive copies are not in any repo (missing: true). Every page except sun-moon.html has changed since its last entry and has not been re-logged yet.",
+ "files": {
+  "ferry.html": {
+   "current": 6,
+   "versions": [
+    {
+     "v": 1,
+     "file": "versions/ferry.v1.html",
+     "archived": "2026-09-30",
+     "note": "Original from the GitHub repo, before any changes in this conversation.",
+     "bytes": 201463,
+     "sha": "c1c1cad3c4721c038e33031956bbcd03173c7c3b2de577d77a234e30672f566a",
+     "missing": true
+    },
+    {
+     "v": 2,
+     "file": "versions/ferry.v2.html",
+     "archived": "2026-09-30",
+     "note": "iPhone fixes: 16 px fields so Safari does not zoom, no sideways scrolling, route cards fit.",
+     "bytes": 201979,
+     "sha": "8431c4ee4872b1be0aa1c1d4d5130ff4e4ffed6e2a5705e48fcf9e44aff2a2a8",
+     "missing": true
+    },
+    {
+     "v": 3,
+     "file": "versions/ferry.v3.html",
+     "archived": "2026-09-30",
+     "note": "Route-wind bug sweep (wind applied on Calculate, wind triangle, TAS followed, stale-results note). This is the 'ferry backup': fewest moving parts.",
+     "bytes": 205233,
+     "sha": "83876aa3f6a44d942051864ba7a43c147c2d97ebc0aad86a31e3b8dde77d981c",
+     "missing": true
+    },
+    {
+     "v": 4,
+     "file": "versions/ferry.v4.html",
+     "archived": "2026-09-30",
+     "note": "Adds planning date, Local/UTC switch, ATS and fuel opening hours and automated NOTAM checks (FAA source, blocked from GitHub).",
+     "bytes": 240927,
+     "sha": "c64b8ee352cc6ced5ab75079114d7f4543b6db6fd974be7a7935a857e1b6ba1a",
+     "missing": true
+    },
+    {
+     "v": 5,
+     "file": "versions/ferry.v5.html",
+     "archived": "2026-09-30",
+     "note": "Manual NOTAM check with a copy-route button for IPPC; opening-hours check date and stale warning.",
+     "bytes": 239871,
+     "sha": "7fbc5561f66798a76e3e068f4bce4ceb4dd0e60f3dc771a0c8c2802bfad38070",
+     "missing": true
+    },
+    {
+     "v": 6,
+     "file": "versions/ferry.v6.html",
+     "archived": "2026-09-30",
+     "note": "Discreet version label added; no other changes.",
+     "bytes": 240196,
+     "sha": "e6cbd252c5fa38e0bf2db67daa24abd705a2a766afccaecab6f54981ec863a28",
+     "body_sha": "7fbc5561f66798a76e3e068f4bce4ceb4dd0e60f3dc771a0c8c2802bfad38070",
+     "missing": true
+    }
+   ]
+  },
+  "sun-moon.html": {
+   "current": 7,
+   "versions": [
+    {
+     "v": 1,
+     "file": "versions/sun-moon.v1.html",
+     "archived": "2026-09-30",
+     "note": "Earliest kept: three tabs (dashboard, next 14 nights, moon calendar), Local/UTC, iPhone no-zoom fix. Earlier iterations were not kept.",
+     "bytes": 249331,
+     "sha": "f63a95942d5273746287ddfe9d2686654ff57538416026499fd43a5c0fab7cfe",
+     "missing": true
+    },
+    {
+     "v": 2,
+     "file": "versions/sun-moon.v2.html",
+     "archived": "2026-09-30",
+     "note": "Adds green/amber/red mlx colours and the moon-distance fix.",
+     "bytes": 249931,
+     "sha": "572f1608586d3150cba76e28e0cc237664d3dabd5837497ac18ba6da9349df28",
+     "missing": true
+    },
+    {
+     "v": 3,
+     "file": "versions/sun-moon.v3.html",
+     "archived": "2026-09-30",
+     "note": "Night rows labelled by the whole night, tap opens at the brightest moment, list keeps its start.",
+     "bytes": 251246,
+     "sha": "b7c297c6dc14e076124b997343e7395b75405226b34afda89809b39efd480e39",
+     "missing": true
+    },
+    {
+     "v": 4,
+     "file": "versions/sun-moon.v4.html",
+     "archived": "2026-09-30",
+     "note": "Graph in the app's 402 × 140 proportions on phones (capped at 170 px tall on wide screens); the page shows its own version number in the footer.",
+     "bytes": 251396,
+     "sha": "bec57a4247d9f8edcd2881a4d2a80f877b56925275db97860ccbf97bfdfa5cc0",
+     "missing": true
+    },
+    {
+     "v": 5,
+     "file": "versions/sun-moon.v5.html",
+     "archived": "2026-09-30",
+     "note": "Version label made discreet (small 'v5' at the bottom instead of a footer sentence).",
+     "bytes": 251608,
+     "sha": "770b4c487f0d4817a4c8de276734e86c2ef2eadd2a1e85ec45cb344192a9bdac",
+     "body_sha": "a2d387cb3eeaded6d695d667ebcb1ba38b6d823f035b696787622a2204a98abf",
+     "missing": true
+    },
+    {
+     "v": 6,
+     "label": "LOOME 1.7 (Norway edition)",
+     "file": "versions/sun-moon.v6.html",
+     "archived": "2026-11-06",
+     "note": "The live file as found in the repo on 2026-11-06 (LOOME 1.7, Norway edition). It was not logged when it was published; changes between v5 (2026-09-30) and this version are not itemised.",
+     "bytes": 963046,
+     "sha": "325a72c546c184e1c6ee2dc86c8431472a9bd6647602a61ccfc9817c403e6a74"
+    },
+    {
+     "v": 7,
+     "label": "LOOME 1.9 (Norway edition)",
+     "file": "versions/sun-moon.v7.html",
+     "archived": "2026-11-06",
+     "note": "LOOME 1.9: the moon card shows the moon's azimuth (true bearing, °T) and elevation (refraction-corrected, signed, 'Below horizon' when negative); a large or medium airport within 10 NM names the place (airport naming from LOOME 1.8). Moon graphic and curve unchanged; Norway edition kept (Tools link, map limits, no service worker).",
+     "bytes": 964458,
+     "sha": "73ecfc820fe03562394d15987731cd4bbe3e1815c8cc14fcac58f13b1f859d55"
+    }
+   ]
+  },
+  "index.html": {
+   "current": 3,
+   "versions": [
+    {
+     "v": 1,
+     "file": "versions/index.v1.html",
+     "archived": "2026-09-30",
+     "note": "Original from the GitHub repo.",
+     "bytes": 8385,
+     "sha": "d0309c62a74a0a55f634990e07312a13ce0a4c8a522066de9dee887606ba6a8a",
+     "missing": true
+    },
+    {
+     "v": 2,
+     "file": "versions/index.v2.html",
+     "archived": "2026-09-30",
+     "note": "Adds the Sun & Moon card.",
+     "bytes": 8748,
+     "sha": "a1b6490538d2a402fef236a25b59af24e760b0c57e006339be10293466a2fc44",
+     "missing": true
+    },
+    {
+     "v": 3,
+     "file": "versions/index.v3.html",
+     "archived": "2026-09-30",
+     "note": "Discreet version label added; no other changes.",
+     "bytes": 9073,
+     "sha": "d1574123739601907e6cbe93626a1b04b4895115f1e8285e254de842820758c7",
+     "body_sha": "a1b6490538d2a402fef236a25b59af24e760b0c57e006339be10293466a2fc44",
+     "missing": true
+    }
+   ]
+  },
+  "aw169-prototyp-A.html": {
+   "current": 3,
+   "versions": [
+    {
+     "v": 1,
+     "file": "versions/aw169-prototyp-A.v1.html",
+     "archived": "2026-09-30",
+     "note": "Original from the GitHub repo, as fetched in this conversation.",
+     "bytes": 38266,
+     "sha": "2ac4e608e5170fa0b3db51cc5f5f2be80920bb03b194d8abf4cdd69f762adea5",
+     "missing": true
+    },
+    {
+     "v": 2,
+     "file": "versions/aw169-prototyp-A.v2.html",
+     "archived": "2026-09-30",
+     "note": "iPhone no-zoom fix (16 px fields on touch screens).",
+     "bytes": 38538,
+     "sha": "ce4134c57cd3c2db379e4f038ba6fba89c6ed0cb29506a7a170dbf5fb9633967",
+     "missing": true
+    },
+    {
+     "v": 3,
+     "file": "versions/aw169-prototyp-A.v3.html",
+     "archived": "2026-09-30",
+     "note": "Discreet version label added; no other changes.",
+     "bytes": 38863,
+     "sha": "d1c47f79d0bc01b19afbc396960886bf54a6557864b2328ac39ef6fdfaa8b386",
+     "body_sha": "ce4134c57cd3c2db379e4f038ba6fba89c6ed0cb29506a7a170dbf5fb9633967",
+     "missing": true
+    }
+   ]
+  },
+  "limitations.html": {
+   "current": 3,
+   "versions": [
+    {
+     "v": 1,
+     "file": "versions/limitations.v1.html",
+     "archived": "2026-09-30",
+     "note": "Original from the GitHub repo, as fetched in this conversation.",
+     "bytes": 139391,
+     "sha": "2fbff9c4841acfe89db023b91c858a8f0e5db30f032484ee0811f3eaf095a3ac",
+     "missing": true
+    },
+    {
+     "v": 2,
+     "file": "versions/limitations.v2.html",
+     "archived": "2026-09-30",
+     "note": "iPhone no-zoom fix (16 px fields on touch screens).",
+     "bytes": 139663,
+     "sha": "f701c93d816d442e6e0333e6f1f38764bee1f1cb76261afcad7046d2e58fb393",
+     "missing": true
+    },
+    {
+     "v": 3,
+     "file": "versions/limitations.v3.html",
+     "archived": "2026-09-30",
+     "note": "Discreet version label added; no other changes.",
+     "bytes": 139988,
+     "sha": "dfff4744611d673789180fb951dc4f7ee8df544ad043a6a15f5e66b639960178",
+     "body_sha": "f701c93d816d442e6e0333e6f1f38764bee1f1cb76261afcad7046d2e58fb393",
+     "missing": true
+    }
+   ]
+  },
+  "operations.html": {
+   "current": 3,
+   "versions": [
+    {
+     "v": 1,
+     "file": "versions/operations.v1.html",
+     "archived": "2026-09-30",
+     "note": "Original from the GitHub repo, as fetched in this conversation.",
+     "bytes": 62374,
+     "sha": "7f311c876bddac6ed265bd7544f3176908a1fe325fab923c2787e49f0355bdbc",
+     "missing": true
+    },
+    {
+     "v": 2,
+     "file": "versions/operations.v2.html",
+     "archived": "2026-09-30",
+     "note": "iPhone no-zoom fix (16 px fields on touch screens).",
+     "bytes": 62646,
+     "sha": "2f8fc578bdd461415f76e374fcd5521c1904fc2fe4758f38f619efc9685db81e",
+     "missing": true
+    },
+    {
+     "v": 3,
+     "file": "versions/operations.v3.html",
+     "archived": "2026-09-30",
+     "note": "Discreet version label added; no other changes.",
+     "bytes": 62971,
+     "sha": "0199f0457698d19c07158cf21ac91b2976a04fdbc3975c49820e30aabbc4f880",
+     "body_sha": "2f8fc578bdd461415f76e374fcd5521c1904fc2fe4758f38f619efc9685db81e",
+     "missing": true
+    }
+   ]
+  },
+  "performance.html": {
+   "current": 3,
+   "versions": [
+    {
+     "v": 1,
+     "file": "versions/performance.v1.html",
+     "archived": "2026-09-30",
+     "note": "Original from the GitHub repo, as fetched in this conversation.",
+     "bytes": 35495,
+     "sha": "2fcdf399bcd75d111baf245e7388f2eea02044a4330866922cf329d15695d6b9",
+     "missing": true
+    },
+    {
+     "v": 2,
+     "file": "versions/performance.v2.html",
+     "archived": "2026-09-30",
+     "note": "iPhone no-zoom fix (16 px fields on touch screens).",
+     "bytes": 35767,
+     "sha": "e4b6bb56dd635999f4f3bec5e289ca473bc1e2d9013087c0e9a095e91d173d63",
+     "missing": true
+    },
+    {
+     "v": 3,
+     "file": "versions/performance.v3.html",
+     "archived": "2026-09-30",
+     "note": "Discreet version label added; no other changes.",
+     "bytes": 36092,
+     "sha": "04ab94e97410eb1fb371dfaabc9dd7a61b371102630c44ab34274cfb35562c90",
+     "body_sha": "e4b6bb56dd635999f4f3bec5e289ca473bc1e2d9013087c0e9a095e91d173d63",
+     "missing": true
+    }
+   ]
+  }
+ }
+}
