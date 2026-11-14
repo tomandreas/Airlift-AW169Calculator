@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="page-version" content="7">
+<meta name="page-version" content="8">
 <title>AW169 — Ferry Planning</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -198,6 +198,24 @@
   .calc-err { font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 1.6; padding: 10px 14px; border-left: 3px solid var(--danger); background: rgba(224,82,82,0.08); color: var(--text); }
   .calc-err b { display: block; color: var(--danger); margin-bottom: 4px; }
   .calc-btn:disabled { opacity: .6; cursor: progress; transform: none; }
+
+  /* Coastwise routing */
+  .cw-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; }
+  .cw-name { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text); min-width: 0; }
+  .cw-name small { display: block; font-size: 9px; color: var(--muted); letter-spacing: .5px; margin-top: 1px; overflow-wrap: anywhere; }
+  .sw { display: inline-flex; align-items: center; gap: 8px; background: none; border: none; padding: 6px 0 6px 8px; cursor: pointer; color: var(--muted); font-family: 'IBM Plex Mono', monospace; min-height: 40px; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+  .sw-track { position: relative; width: 42px; height: 22px; border-radius: 11px; background: var(--bg); border: 1px solid var(--border); transition: background .15s, border-color .15s; flex-shrink: 0; box-sizing: border-box; }
+  .sw-thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s; }
+  .sw[aria-checked="true"] .sw-track { background: var(--accent); border-color: var(--accent); }
+  .sw[aria-checked="true"] .sw-thumb { transform: translateX(20px); background: #0b0e14; }
+  .sw-state { font-size: 10px; letter-spacing: 1px; min-width: 24px; text-align: left; }
+  .sw[aria-checked="true"] .sw-state { color: var(--accent); font-weight: 600; }
+  .sw:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; border-radius: 3px; }
+  @media (prefers-reduced-motion: reduce) { .sw-track, .sw-thumb { transition: none; } }
+  .cw-via { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--accent2); line-height: 1.5; margin-top: 6px; overflow-wrap: anywhere; }
+  .cw-via:empty { display: none; }
+  .cw-via.warn { color: var(--accent); }
+  .tl-leg-via { font-family: 'IBM Plex Mono', monospace; font-size: 10px; line-height: 1.6; color: var(--accent2); margin-top: 4px; overflow-wrap: anywhere; }
   @media (max-width: 780px) {
     .planner-layout { grid-template-columns: minmax(0, 1fr); }
     .planner-layout > * { min-width: 0; }
@@ -301,6 +319,18 @@
           <div class="fc-status" id="fc-status"></div>
           <div class="fc-attr">Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0). Forecast winds are model estimates, fetched when you press Calculate. Not an approved weather briefing.</div>
         </div>
+        <div id="cw-box" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+          <div class="fc-title">Coastwise Routing</div>
+          <div class="cw-row">
+            <div class="cw-name" id="cw-vest-lbl">Coastwise Vestlandet<small>SUMAK → UPLOR → VEMAM → ADNUM</small></div>
+            <button type="button" class="sw" id="cw-vest" role="switch" aria-checked="false" aria-labelledby="cw-vest-lbl" onclick="setCoast('vest', this.getAttribute('aria-checked') !== 'true')"><span class="sw-track"><span class="sw-thumb"></span></span><span class="sw-state">OFF</span></button>
+          </div>
+          <div class="cw-row">
+            <div class="cw-name" id="cw-helg-lbl">Coastwise Helgeland<small>SUKAM → ADRIP</small></div>
+            <button type="button" class="sw" id="cw-helg" role="switch" aria-checked="false" aria-labelledby="cw-helg-lbl" onclick="setCoast('helg', this.getAttribute('aria-checked') !== 'true')"><span class="sw-track"><span class="sw-thumb"></span></span><span class="sw-state">OFF</span></button>
+          </div>
+          <div class="fc-status" id="cw-status"></div>
+        </div>
 
       <!-- Route builder -->
       <div class="panel">
@@ -338,6 +368,7 @@
           <div class="legend-item"><div class="legend-dot" style="background:#4ea8de"></div>Airport</div>
           <div class="legend-item"><div class="legend-dot" style="background:#e8a020"></div>Route WP</div>
           <div class="legend-item"><div class="legend-dot" style="background:#e05252"></div>Warning</div>
+          <div class="legend-item" id="cw-legend" style="display:none"><div class="legend-dot" style="background:#4ea8de;border-radius:1px;transform:rotate(45deg) scale(.85)"></div>Coastal waypoint</div>
         </div>
       </div>
     </div>
@@ -548,6 +579,149 @@ function windGS(tas,windDir,windSpd,track) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// COASTWISE ROUTING (planning aid, not an approved route)
+// Predefined coastal navigation points (user supplied, WGS84). Pure geometry, no DOM access.
+// Needs haversine(), bearing() from MATH UTILS and AP (airport table).
+// An airport is projected onto the enabled coastal chain; a leg uses the chain waypoints that lie strictly
+// between the two airport positions along the chain, in travel order. Rules are documented in CLAUDE.md.
+// ═══════════════════════════════════════════════════════════
+const COAST = (function () {
+  const R = Math.PI / 180, NM = 3440.065;
+  const dms = (d, m, s) => d + m / 60 + s / 3600;
+  const RATIO_MAX = 1.35;   // the coastal path may be at most 35 % longer than the direct leg, otherwise it is not used
+  const AMB_NM = 5;         // two route segments within this distance of an airport (and different positions) = ambiguous placement
+  const EPS = 1e-9;
+  // Route definitions, south to north. Edit coordinates here only.
+  const ROUTES = [
+    { id: 'vest', label: 'Coastwise Vestlandet', short: 'Vestlandet', pts: [
+      { n: 'SUMAK', lat: dms(60, 37, 35),    lon: dms(4, 32, 19) },
+      { n: 'UPLOR', lat: dms(61, 44, 54),    lon: dms(4, 26, 42) },
+      { n: 'VEMAM', lat: dms(62, 37, 38),    lon: dms(5, 22, 11) },
+      { n: 'ADNUM', lat: dms(63, 28, 28.30), lon: dms(7, 31, 1.80) } ] },
+    { id: 'helg', label: 'Coastwise Helgeland', short: 'Helgeland', pts: [
+      { n: 'SUKAM', lat: dms(63, 47, 57),    lon: dms(9, 12, 36) },
+      { n: 'ADRIP', lat: dms(66, 36, 20),    lon: dms(12, 26, 54) } ] }
+  ];
+  ROUTES.forEach(r => { r.pts.forEach(Object.freeze); Object.freeze(r.pts); Object.freeze(r); });
+  Object.freeze(ROUTES);
+  const state = { vest: false, helg: false };
+
+  const vec = (lat, lon) => { const p = lat * R, l = lon * R; return [Math.cos(p) * Math.cos(l), Math.cos(p) * Math.sin(l), Math.sin(p)]; };
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const unit = a => { const m = Math.hypot(a[0], a[1], a[2]); return [a[0] / m, a[1] / m, a[2] / m]; };
+  const c1 = x => Math.max(-1, Math.min(1, x));
+
+  const cfgOf = cfg => cfg || state;
+  const key = cfg => { const c = cfgOf(cfg); return (c.vest ? 'V' : '-') + (c.helg ? 'H' : '-'); };
+  const any = cfg => { const c = cfgOf(cfg); return !!(c.vest || c.helg); };
+  const chainCache = new Map();
+  // enabled routes concatenated south to north; a segment joining two routes is a 'link' (not a defined route segment)
+  function chain(cfg) {
+    const k = key(cfg); if (chainCache.has(k)) return chainCache.get(k);
+    const c = cfgOf(cfg), pts = [], links = [];
+    ROUTES.forEach(r => {
+      if (!c[r.id]) return;
+      if (pts.length) links.push(pts.length - 1);          // segment pts.length-1 -> pts.length joins two routes
+      r.pts.forEach(p => pts.push({ n: p.n, lat: p.lat, lon: p.lon, v: vec(p.lat, p.lon), route: r.id }));
+    });
+    let ch = null;
+    if (pts.length >= 2) {
+      const segs = [];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const P1 = pts[i].v, P2 = pts[i + 1].v, n = unit(cross(P1, P2));
+        segs.push({ L: Math.acos(c1(dot(P1, P2))), n, T: cross(n, P1), link: links.includes(i) });
+      }
+      ch = { pts, segs, key: k };
+    }
+    chainCache.set(k, ch); return ch;
+  }
+
+  // position of an airport along the chain: pos = i + t (i = segment, t = fraction). pos < 0 before the first
+  // waypoint, pos > N after the last. d = distance to the nearest point of the chain (NM).
+  function project(ch, X) {
+    const xv = vec(X.lat, X.lon), N = ch.segs.length, c = [];
+    for (let i = 0; i < N; i++) {
+      const s = ch.segs[i], P1 = ch.pts[i].v, P2 = ch.pts[i + 1].v;
+      const al = Math.atan2(dot(xv, s.T), dot(xv, P1));
+      let d;
+      if (al >= 0 && al <= s.L) d = Math.abs(Math.asin(c1(dot(xv, s.n)))) * NM;
+      else if (al < 0) d = Math.acos(c1(dot(xv, P1))) * NM;
+      else d = Math.acos(c1(dot(xv, P2))) * NM;
+      const t = al / s.L;
+      let pos = i + Math.min(1, Math.max(0, t));
+      if (i === 0 && t < 0) pos = t;
+      if (i === N - 1 && t > 1) pos = i + t;
+      c.push({ i, d, pos });
+    }
+    const sorted = c.slice().sort((x, y) => (x.d - y.d) || (x.i - y.i));   // ties: lowest segment index
+    const best = sorted[0];
+    const amb = sorted.slice(1).some(o => o.d - best.d <= AMB_NM && Math.abs(o.pos - best.pos) > 0.5);
+    return { pos: best.pos, d: best.d, seg: best.i, amb };
+  }
+
+  const memo = new Map();
+  function mkPath(pts, extra) {
+    const segs = []; let dist = 0;
+    for (let k = 0; k < pts.length - 1; k++) {
+      const d = haversine(pts[k].lat, pts[k].lon, pts[k + 1].lat, pts[k + 1].lon);
+      segs.push({ from: pts[k].name, to: pts[k + 1].name, dist: d, track: bearing(pts[k].lat, pts[k].lon, pts[k + 1].lat, pts[k + 1].lon) });
+      dist += d;
+    }
+    return Object.assign({ pts, segs, dist, directDist: 0, applied: false, via: [], notes: [], link: false, ratio: 1 }, extra || {});
+  }
+  // a, b = { lat, lon, name }. Returns the path used for one airport-to-airport leg.
+  function legPathLL(a, b, cfg) {
+    const k = key(cfg) + '|' + a.name + '|' + b.name + '|' + a.lat + ',' + a.lon + '|' + b.lat + ',' + b.lon;
+    if (memo.has(k)) return memo.get(k);
+    const A = { lat: a.lat, lon: a.lon, name: a.name, nav: false }, B = { lat: b.lat, lon: b.lon, name: b.name, nav: false };
+    const direct = mkPath([A, B]); direct.directDist = direct.dist;
+    let out = direct;
+    const ch = chain(cfg);
+    if (ch && direct.dist >= 0.5) {
+      const pa = project(ch, a), pb = project(ch, b);
+      const lo = Math.min(pa.pos, pb.pos), hi = Math.max(pa.pos, pb.pos), idx = [];
+      for (let i = 0; i < ch.pts.length; i++) if (i > lo + EPS && i < hi - EPS) idx.push(i);
+      if (idx.length) {
+        if (pa.pos > pb.pos) idx.reverse();                    // southbound: reverse the waypoint order
+        const pts = [A]; let link = false;
+        idx.forEach((i, j) => {
+          const w = ch.pts[i];
+          if (haversine(pts[pts.length - 1].lat, pts[pts.length - 1].lon, w.lat, w.lon) < 0.5) return;   // no duplicate / zero-length points
+          if (j > 0 && Math.abs(idx[j] - idx[j - 1]) === 1 && ch.segs[Math.min(idx[j], idx[j - 1])].link) link = true;
+          pts.push({ lat: w.lat, lon: w.lon, name: w.n, nav: true });
+        });
+        pts.push(B);
+        const cand = mkPath(pts, { directDist: direct.dist, applied: true, link });
+        cand.via = pts.filter(p => p.nav).map(p => p.name);
+        cand.ratio = cand.dist / direct.dist;
+        if (!cand.via.length) { /* every waypoint coincided with an airport: nothing to add */ }
+        else if (cand.ratio > RATIO_MAX) {
+          direct.notes.push(`Coastwise not applied to ${a.name}–${b.name}: the coastal path (${Math.round(cand.dist)} NM) would be ${Math.round((cand.ratio - 1) * 100)}% longer than direct (${Math.round(direct.dist)} NM; limit ${Math.round((RATIO_MAX - 1) * 100)}%).`);
+          direct.rejected = true;
+        } else {
+          if (link) cand.notes.push('ADNUM–SUKAM is a direct link between the two coastal routes, not a defined route segment. Not validated.');
+          if (pa.amb || pb.amb) cand.notes.push(`Placement of ${pa.amb ? a.name : b.name} relative to the coastal route is ambiguous (nearly equidistant from two route segments); the nearest segment, lowest index, was used.`);
+          out = cand;
+        }
+      }
+    }
+    memo.set(k, out); return out;
+  }
+  const llOf = icao => { const ap = AP[icao]; return ap ? { lat: ap.lat, lon: ap.lon, name: icao } : null; };
+  function legPath(icaoA, icaoB, cfg) {
+    const a = llOf(icaoA), b = llOf(icaoB);
+    return legPathLL(a, b, cfg);
+  }
+  return {
+    ROUTES, RATIO_MAX, state, key, any, chain, project, legPath, legPathLL,
+    set(id, on) { if (id in state) state[id] = !!on; },
+    reset() { state.vest = false; state.helg = false; },
+    enabledRoutes(cfg) { const c = cfgOf(cfg); return ROUTES.filter(r => c[r.id]); }
+  };
+})();
+
+// ═══════════════════════════════════════════════════════════
 // FORECAST WIND ENGINE (Open-Meteo, ICON pressure levels)
 // Time-marched wind-triangle integration along great-circle legs.
 // Needs haversine() and bearing() from MATH UTILS. No DOM access in here.
@@ -589,6 +763,16 @@ const FWX = (function () {
       pts.push(k === 0 ? { lat: a.lat, lon: a.lon } : k === n ? { lat: b.lat, lon: b.lon } : gcPoint(a.lat, a.lon, b.lat, b.lon, k / n));
     return { dist, n, pts };
   }
+  // a leg may be a polyline (coastwise): equal great-circle steps of at most SPACING_NM on every segment
+  function legSteps(path) {
+    const steps = []; let dist = 0, idx = 0;
+    for (let s = 0; s < path.length - 1; s++) {
+      const S = legSamples(path[s], path[s + 1]), len = S.dist / S.n; dist += S.dist;
+      for (let k = 0; k < S.n; k++, idx++) steps.push({ p0: S.pts[k], p1: S.pts[k + 1], len, k0: locKey(S.pts[k].lat, S.pts[k].lon), k1: locKey(S.pts[k + 1].lat, S.pts[k + 1].lon) });
+    }
+    return { dist, n: steps.length, steps };
+  }
+  const pathDist = p => { let d = 0; for (let k = 0; k < p.length - 1; k++) d += haversine(p[k].lat, p[k].lon, p[k + 1].lat, p[k + 1].lon); return d; };
   const q = x => Math.round(x * 20) / 20;                 // 0.05° grid: nearby samples share one forecast point
   const locKey = (lat, lon) => q(lat).toFixed(2) + ',' + q(lon).toFixed(2);
 
@@ -676,10 +860,9 @@ const FWX = (function () {
   // At each segment start the wind is taken at the time the aircraft reaches that sample; the end sample is
   // predicted with the start GS and then corrected (Heun / trapezoid on 1/GS), so time and wind stay consistent.
   function integrateLeg(o) {
-    const { a, b, tas, altFt, tStartMs } = o;
+    const { tas, altFt, tStartMs } = o;
     const altM = altFt * FT, need = levelsForAlt(altM);
-    const S = legSamples(a, b), segLen = S.dist / S.n;
-    const keys = S.pts.map(p => locKey(p.lat, p.lon));
+    const S = legSteps(o.path || [o.a, o.b]);
     let tSec = tStartMs / 1000, timeH = 0, hwSum = 0, xwMax = 0, minFetched = Infinity;
     let nBelow = 0, maxTerrainM = -Infinity, low = false, high = false;
     const seen = new Set();
@@ -690,14 +873,15 @@ const FWX = (function () {
       if (w.below && !seen.has(k)) { seen.add(k); nBelow++; }
     };
     for (let k = 0; k < S.n; k++) {
-      const track = bearing(S.pts[k].lat, S.pts[k].lon, S.pts[k + 1].lat, S.pts[k + 1].lon);
-      const wA = windAt(keys[k], tSec, altM, need);
+      const st = S.steps[k], segLen = st.len;
+      const track = bearing(st.p0.lat, st.p0.lon, st.p1.lat, st.p1.lon);
+      const wA = windAt(st.k0, tSec, altM, need);
       if (wA.miss) return { status: 'fail', reason: wA.miss, at: k, nSamples: S.n + 1 };
       note(wA, k);
       const A = fromUV(wA.u, wA.v), tA = triangle(tas, A.dir, A.spd, track);
       if (!tA.ok) return { status: 'fail', reason: 'triangle', detail: tA, at: k, nSamples: S.n + 1 };
       const tPred = tSec + segLen / tA.gs * 3600;
-      const wB = windAt(keys[k + 1], tPred, altM, need);
+      const wB = windAt(st.k1, tPred, altM, need);
       if (wB.miss) return { status: 'fail', reason: wB.miss, at: k + 1, nSamples: S.n + 1 };
       note(wB, k + 1);
       const B = fromUV(wB.u, wB.v), tB = triangle(tas, B.dir, B.spd, track);
@@ -796,14 +980,15 @@ const FWX = (function () {
 
     const points = new Map(); let need = new Set(); let boundH = 0;
     for (const i of fcIdx) {
-      const L = legs[i], S = legSamples(L.a, L.b);
-      S.pts.forEach(p => { const k = locKey(p.lat, p.lon); if (!points.has(k)) points.set(k, { lat: q(p.lat), lon: q(p.lon) }); });
+      const L = legs[i], P = L.path || [L.a, L.b];
+      for (let s = 0; s < P.length - 1; s++)
+        legSamples(P[s], P[s + 1]).pts.forEach(p => { const k = locKey(p.lat, p.lon); if (!points.has(k)) points.set(k, { lat: q(p.lat), lon: q(p.lon) }); });
       levelsForAlt(L.altFt * FT).forEach(l => need.add(l));
     }
     if (points.size > MAX_POINTS)
       return { ok: false, kind: 'toolong', message: `This route needs ${points.size} forecast points (limit ${MAX_POINTS}). Shorten the route or use GS or Wind mode for some legs.` };
     need = [...need].sort((x, y) => y - x);
-    legs.forEach((l, i) => { boundH += l.fc ? haversine(l.a.lat, l.a.lon, l.b.lat, l.b.lon) / Math.max(40, 0.5 * tas) : l.timeH; boundH += (stopMin[i] || 0) / 60; });
+    legs.forEach((l, i) => { boundH += l.fc ? pathDist(l.path || [l.a, l.b]) / Math.max(40, 0.5 * tas) : l.timeH; boundH += (stopMin[i] || 0) / 60; });
     const plan = { points, need, t0Ms: startMs, t1Ms: startMs + boundH * 3600e3 + 3600e3 };
 
     let results, ens, extended = 0;
@@ -828,7 +1013,7 @@ const FWX = (function () {
       if (stopped) { results.push({ status: 'skipped' }); return; }
       let r;
       if (L.fc) {
-        r = integrateLeg({ a: L.a, b: L.b, tas, altFt: L.altFt, tStartMs: t });
+        r = integrateLeg({ a: L.a, b: L.b, path: L.path, tas, altFt: L.altFt, tStartMs: t });
         if (r.status === 'fail') { stopped = true; results.push(r); return; }
         t = r.tEndMs;
       } else { r = null; t += L.timeH * 3600e3; }
@@ -1059,10 +1244,8 @@ function renderRoute() {
     if (i < waypoints.length-1) {
       const nextAp = AP[(waypoints[i+1].icao||'').toUpperCase()];
       let distLabel = '— NM';
-      if (ap && nextAp) {
-        const d = haversine(ap.lat,ap.lon,nextAp.lat,nextAp.lon);
-        distLabel = `${Math.round(d)} NM`;
-      }
+      const lp = ap && nextAp ? legPlan(i) : null;
+      if (lp) distLabel = `${Math.round(lp.dist)} NM`;
       const isWind = wp.mode === 'wind', isFc = wp.mode === 'fc';
       const computedGS = getGS(i);
       html += `<div class="leg-connector">
@@ -1077,6 +1260,7 @@ function renderRoute() {
                 <button class="wt-btn ${isFc?'active':''}" onclick="setLegMode(${i},'fc')">Forecast</button>
               </div>
             </div>
+            <div class="cw-via ${lp && lp.rejected ? 'warn' : ''}" id="legvia-${i}">${viaText(lp)}</div>
             <div class="wind-fields" id="leg-fields-${i}">
               ${isFc ? fcLegHtml(i) : isWind ? `
                 <label>From</label>
@@ -1126,11 +1310,15 @@ function renderLegDistances() {
     if (!el) return;
     const a = AP[(wp.icao||'').toUpperCase()];
     const b = AP[(waypoints[i+1].icao||'').toUpperCase()];
+    const via = document.getElementById(`legvia-${i}`);
     if (a && b) {
-      el.textContent = `${Math.round(haversine(a.lat,a.lon,b.lat,b.lon))} NM`;
+      const lp = legPlan(i);
+      el.textContent = `${Math.round(lp.dist)} NM`;
       el.className = 'leg-dist computed';
+      if (via) { via.textContent = viaText(lp); via.className = 'cw-via' + (lp.rejected ? ' warn' : ''); }
     } else {
       el.textContent = '— NM'; el.className = 'leg-dist';
+      if (via) via.textContent = '';
     }
   });
 }
@@ -1164,8 +1352,29 @@ function getGS(i) {
   const a = AP[(wp.icao||'').toUpperCase()];
   const b = AP[(waypoints[i+1]?.icao||'').toUpperCase()];
   if (!a||!b) return tas;
-  const track = bearing(a.lat,a.lon,b.lat,b.lon);
-  return Math.round(windGS(tas,wp.windDir,wp.windSpd,track));
+  const P = legPlan(i);
+  if (P.segs.length > 1) return Math.round(P.dist / windLegTime(i, P));     // coastwise: every segment has its own track
+  return Math.round(windGS(tas,wp.windDir,wp.windSpd,P.segs[0].track));
+}
+// legs are routed by COAST (direct, or via coastal waypoints); the same path feeds distance, wind, time, fuel and the map
+function legPlan(i) {
+  const a = (waypoints[i]?.icao||'').toUpperCase(), b = (waypoints[i+1]?.icao||'').toUpperCase();
+  return AP[a] && AP[b] ? COAST.legPath(a, b) : null;
+}
+// manual Wind mode over a multi-segment path: hours, each segment at its own track (GS rounded and floored like a single leg)
+function windLegTime(i, P) {
+  const wp = waypoints[i], tas = currentTas();
+  return P.segs.reduce((t, s) => t + s.dist / Math.max(30, Math.round(windGS(tas, wp.windDir, wp.windSpd, s.track))), 0);
+}
+function fixedLeg(i, P) {
+  if (waypoints[i].mode === 'wind' && P.segs.length > 1) { const t = windLegTime(i, P); return { gs: Math.max(30, Math.round(P.dist / t)), timeH: t }; }
+  const gs = Math.max(30, getGS(i));
+  return { gs, timeH: P.dist / gs };
+}
+function viaText(P) {
+  if (!P) return '';
+  if (P.applied) return `via ${P.via.join(' · ')} (direct ${Math.round(P.directDist)} NM)`;
+  return P.rejected ? 'Coastwise not applied: detour too long' : '';
 }
 
 let appliedRouteWind = null;   // last route wind copied to the legs
@@ -1246,19 +1455,19 @@ async function calculate(quiet) {
   for (let i=0; i<nLegs; i++) {
     const wp = waypoints[i];
     const a = AP[wp.icao], b = AP[waypoints[i+1].icao];
-    const dist = haversine(a.lat,a.lon,b.lat,b.lon);
-    const track = bearing(a.lat,a.lon,b.lat,b.lon);
-    geo.push({a,b,dist,track});
+    const P = COAST.legPath(wp.icao, waypoints[i+1].icao);
+    const dist = P.dist, track = P.segs[0].track;
+    geo.push({a,b,dist,track,path:P});
     stopMin.push(i+1 < waypoints.length-1 ? waypoints[i+1].gstop : 0);
     if (wp.mode === 'fc' && dist >= 0.5) {
-      solveLegs.push({ fc:true, a:{lat:a.lat,lon:a.lon}, b:{lat:b.lat,lon:b.lon}, altFt:legAlt(i) });
+      solveLegs.push({ fc:true, a:{lat:a.lat,lon:a.lon}, b:{lat:b.lat,lon:b.lon}, path:P.pts.map(p=>({lat:p.lat,lon:p.lon})), altFt:legAlt(i) });
       fixedGS.push(null);
     } else {
       if (wp.mode === 'wind' && !legWindCheck(i).ok)
         problems.push(`Leg ${i+1} ${wp.icao}–${waypoints[i+1].icao}: the wind (${String(Math.round(wp.windDir)).padStart(3,'0')}° / ${wp.windSpd} kt) is too strong to hold the track or leaves less than ${FWX.MIN_GS} kt groundspeed.`);
-      const gs = Math.max(30,getGS(i));
-      solveLegs.push({ fc:false, timeH:dist/gs });
-      fixedGS.push(gs);
+      const fx = fixedLeg(i, P);
+      solveLegs.push({ fc:false, timeH:fx.timeH });
+      fixedGS.push(fx.gs);
     }
   }
   if (problems.length) { renderCalcError('Cannot calculate this route', problems); return; }
@@ -1309,7 +1518,7 @@ async function calculate(quiet) {
     const contFuel = tripFuel*CONT_PCT;
     const minFuelDep = tripFuel+contFuel+FINAL_RESERVE;
     const feasible = minFuelDep<=MAX_FUEL;
-    legs.push({from:waypoints[i].icao,to:waypoints[i+1].icao,dist:Math.round(g.dist),
+    legs.push({from:waypoints[i].icao,to:waypoints[i+1].icao,dist:Math.round(g.dist),path:g.path,
                track:Math.round(g.track),gs,timeH,timeMins:timeH*60,tripFuel,contFuel,minFuelDep,feasible,
                mode: fc ? 'fc' : (waypoints[i].mode === 'fc' ? 'gs' : waypoints[i].mode), fc: fc ? r : null});
     if (fc) waypoints[i].fc = { ...r, sig, model: solved.meta.model, stale: solved.meta.stale }; else delete waypoints[i].fc;
@@ -1355,7 +1564,7 @@ async function calculate(quiet) {
 // what the forecast results depend on: date, time, zone, TAS, route, modes, altitudes, ground stops
 function fcSig() {
   return JSON.stringify([document.getElementById('plan-date').value, document.getElementById('dep-time').value, PLAN_ZONE, currentTas(), FC.altMode,
-    waypoints.map((w,i) => [w.icao, w.mode, i < waypoints.length-1 ? legAlt(i) : 0, w.gstop])]);
+    waypoints.map((w,i) => [w.icao, w.mode, i < waypoints.length-1 ? legAlt(i) : 0, w.gstop]), COAST.key()]);
 }
 // manual Wind mode: can the aircraft hold the track and make progress?
 function legWindCheck(i) {
@@ -1363,7 +1572,9 @@ function legWindCheck(i) {
   if (!wp || wp.mode !== 'wind') return { ok:true };
   const a = AP[(wp.icao||'').toUpperCase()], b = AP[(waypoints[i+1]?.icao||'').toUpperCase()];
   if (!a || !b) return { ok:true };
-  return FWX.triangle(currentTas(), wp.windDir, wp.windSpd, bearing(a.lat,a.lon,b.lat,b.lon));
+  let last = { ok:true };
+  for (const s of legPlan(i).segs) { last = FWX.triangle(currentTas(), wp.windDir, wp.windSpd, s.track); if (!last.ok) return last; }   // every coastal segment must be flyable
+  return last;
 }
 const hwLabel = hw => Math.abs(hw) < 0.5 ? 'HW/TW 0 kt' : hw > 0 ? `HW ${Math.round(hw)} kt` : `TW ${Math.round(-hw)} kt`;
 
@@ -1467,6 +1678,50 @@ function fcNote(legs) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// COASTWISE UI
+// ═══════════════════════════════════════════════════════════
+function setCoast(id, on) {
+  COAST.set(id, on);
+  cwUpdateUI();
+  renderRoute(); drawMap(); markStale();     // routes, distances, GS and the map follow the switches; shown results become stale
+}
+function cwUpdateUI() {
+  ['vest','helg'].forEach(id => {
+    const b = document.getElementById('cw-' + id); if (!b) return;
+    const on = !!COAST.state[id];
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+    b.querySelector('.sw-state').textContent = on ? 'ON' : 'OFF';
+  });
+  const st = document.getElementById('cw-status'); if (!st) return;
+  const on = COAST.enabledRoutes();
+  const lg = document.getElementById('cw-legend'); if (lg) lg.style.display = on.length ? '' : 'none';
+  if (!on.length) { st.className = 'fc-status'; st.textContent = ''; return; }
+  st.className = 'fc-status ok';
+  st.innerHTML = '✓ Active: ' + on.map(r => esc(r.short)).join(' + ') +
+    (on.length === 2 ? '<br>ADNUM → SUKAM is a direct link between the two routes, not a defined route segment.' : '') +
+    '<br><span style="color:var(--muted)">Planning aid only. Not an approved route: no terrain, obstacle, airspace or emergency-landing check.</span>';
+}
+const trackText = leg => leg.path && leg.path.segs.length > 1 ? leg.path.segs.map(s => Math.round(s.track)).join('°→') + '°' : `${leg.track}°`;
+function cwLegHtml(leg) {
+  const P = leg.path; if (!P || (!P.applied && !P.notes.length)) return '';
+  let h = '';
+  if (P.applied) {
+    const pct = Math.round((P.ratio - 1) * 100);
+    h += `<div class="tl-leg-via">Coastwise: ${P.segs.map(s => `${esc(s.from)}→${esc(s.to)} ${Math.round(s.dist)} NM ${String(Math.round(s.track) % 360).padStart(3,'0')}°`).join(' · ')} · ${Math.round(P.dist)} NM vs ${Math.round(P.directDist)} NM direct (+${pct}%)</div>`;
+  }
+  P.notes.forEach(m => { h += `<div class="tl-leg-warn" style="color:var(--accent);border-left-color:var(--accent);background:rgba(232,160,32,0.08)">⚠ ${esc(m)}</div>`; });
+  return h;
+}
+function cwSummaryItem(legs) {
+  const n = legs.filter(l => l.path && l.path.applied).length, on = COAST.enabledRoutes().map(r => r.short).join(' + ');
+  return `<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">Coastwise<br><span style="font-size:14px;color:var(--accent2);">${esc(on)}: ${n} of ${legs.length} leg${legs.length>1?'s':''} routed</span></div>`;
+}
+function cwNote() {
+  if (!COAST.any()) return '';
+  return `<div class="data-note">Coastwise routing: straight great-circle segments between the user-supplied waypoints (${COAST.enabledRoutes().map(r => esc(r.short)).join(', ')}). Distance, time and fuel include the coastal waypoints. This is a planning aid, not an approved helicopter route: terrain clearance, airspace and emergency landing options are not checked.</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
 // RESULTS RENDER
 // ═══════════════════════════════════════════════════════════
 function renderResults(legs,wps,quiet) {
@@ -1486,6 +1741,7 @@ function renderResults(legs,wps,quiet) {
     <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">Total fuel burned<br><span style="font-size:18px;color:var(--white)">${Math.round(totalFuel)} kg</span></div>
     <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">Status<br><span style="font-size:14px;color:${allFeasible?'var(--ok)':'var(--danger)'};">${allFeasible?'✓ ALL LEGS OK':'⚠ RANGE EXCEEDED'}</span></div>
     ${legs.some(l=>l.mode==='fc')?fcSummaryItem(legs):''}
+    ${COAST.any()?cwSummaryItem(legs):''}
     <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">ATS / fuel hours<br><span style="font-size:14px;color:${nBad?'var(--danger)':nWarn?'var(--accent)':'var(--ok)'};">${nBad?`⚠ ${nBad} CONFLICT${nBad>1?'S':''}`:nWarn?`${nWarn} ADVISOR${nWarn>1?'IES':'Y'}`:'✓ ALL OPEN'}</span></div>
   `;
   let html='';
@@ -1529,19 +1785,20 @@ function renderResults(legs,wps,quiet) {
         ${leg?`<div class="tl-leg">
           <div class="tl-leg-info">
             <span>${leg.dist} NM</span>
-            <span>Track ${leg.track}°</span>
+            <span>Track ${trackText(leg)}</span>
             <span>GS ${leg.gs} kt${leg.mode==='fc'?' avg':''}</span>${leg.mode==='fc'?`<span>${hwLabel(leg.fc.avgHW)}</span><span>${fmtFt(leg.fc.altFt)}</span>`:''}
             <span>${fmtDuration(leg.timeMins)}</span>
             <span>Burn ${Math.round(leg.tripFuel)} kg</span>
             <span>Min fuel ${Math.round(leg.minFuelDep)} kg</span>
           </div>
+          ${cwLegHtml(leg)}
           ${leg.mode==='fc'?leg.fc.warn.map(m=>`<div class="tl-leg-warn" style="color:var(--accent);border-left-color:var(--accent);background:rgba(232,160,32,0.08)">⚠ ${esc(m)}</div>`).join(''):''}
           ${!leg.feasible?`<div class="tl-leg-warn">⚠ Leg requires ${Math.round(leg.minFuelDep)} kg — exceeds max fuel (${MAX_FUEL} kg). Cannot complete this leg.</div>`:''}
         </div>`:''}
       </div>
     </div>`;
   }
-  tlEl.innerHTML=html + fcNote(legs) + dataNote();
+  tlEl.innerHTML=html + fcNote(legs) + cwNote() + dataNote();
   if (!quiet) panel.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
@@ -1593,6 +1850,34 @@ norwayImg.src='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0
 
 const CALIBRATED=new Set(['ENBR','ENBO','ENTC','ENKR','ENZV','ENCN','ENRY','ENFL','ENAL','ENML','ENKB','ENOL','ENVA','FROSTA','ENRM','ENNM','ENBN','ENST','ENSH','ENEV','ENHF','ENLI','ENRO','ENGM','ENBL','ENSG','ENHD','ENFJ','ENRA','ENLK']);
 
+// reference line of the enabled coastal routes (the link between two routes is dotted: it is not a defined segment)
+function drawCoastRef(ctx){
+  const ch=COAST.chain();if(!ch)return;
+  ctx.lineWidth=1;ctx.strokeStyle='rgba(78,168,222,0.55)';
+  for(let i=0;i<ch.pts.length-1;i++){
+    const a=ch.pts[i],b=ch.pts[i+1],[x0,y0]=proj(a.lat,a.lon),[x1,y1]=proj(b.lat,b.lon);
+    ctx.setLineDash(ch.segs[i].link?[1,3]:[]);
+    ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+  }
+  ctx.setLineDash([]);
+}
+function drawCoastPoints(ctx,used){
+  const ch=COAST.chain();if(!ch)return;
+  ch.pts.forEach(p=>{
+    const[x,y]=proj(p.lat,p.lon);if(x>MAP_W+5||y<-5||y>MAP_H+5)return;
+    const u=used.has(p.n);
+    ctx.font='8px "IBM Plex Mono",monospace';ctx.fillStyle=u?'#9fd0ee':'#4ea8de99';
+    if(x<0){            // west of the map picture (offshore): arrow at the left edge, the line above still runs to the true position
+      ctx.fillStyle=u?'#4ea8de':'#4ea8de99';ctx.beginPath();ctx.moveTo(1,y);ctx.lineTo(7,y-4);ctx.lineTo(7,y+4);ctx.closePath();ctx.fill();
+      ctx.fillStyle=u?'#9fd0ee':'#4ea8de99';ctx.fillText(p.n,10,y+3);return;
+    }
+    ctx.save();ctx.translate(x,y);ctx.rotate(Math.PI/4);
+    ctx.fillStyle=u?'#4ea8de':'#0b0e14';ctx.strokeStyle='#4ea8de';ctx.lineWidth=1;
+    ctx.fillRect(-3,-3,6,6);ctx.strokeRect(-3,-3,6,6);ctx.restore();
+    ctx.fillStyle=u?'#9fd0ee':'#4ea8de99';
+    ctx.fillText(p.n,x+7,y+3);
+  });
+}
 function drawMap(legs,wps){
   const canvas=document.getElementById('map-canvas');
   const ctx=canvas.getContext('2d');
@@ -1610,13 +1895,27 @@ function drawMap(legs,wps){
     ctx.fillStyle='#2a4a6a';ctx.fill();
     ctx.strokeStyle='#4ea8de55';ctx.lineWidth=0.5;ctx.stroke();
   });
+  const used=new Set();
+  if(COAST.any())drawCoastRef(ctx);
   if(legs&&legs.length>0){
     const routeIcaos=[waypoints[0].icao,...legs.map(l=>l.to)];
     ctx.beginPath();ctx.setLineDash([4,3]);ctx.lineWidth=1.5;ctx.strokeStyle='rgba(232,160,32,0.85)';
     let started=false;
-    routeIcaos.forEach(icao=>{const ap=AP[icao];if(!ap)return;const[x,y]=proj(ap.lat,ap.lon);started?ctx.lineTo(x,y):ctx.moveTo(x,y);started=true;});
+    legs.forEach((l,k)=>{
+      const pts=l.path&&l.path.pts?l.path.pts:[AP[k===0?waypoints[0].icao:legs[k-1].to],AP[l.to]];
+      pts.forEach((p,j)=>{if(!p)return;if(k>0&&j===0)return;const[x,y]=proj(p.lat,p.lon);started?ctx.lineTo(x,y):ctx.moveTo(x,y);started=true;if(p.nav)used.add(p.name);});
+    });
     ctx.stroke();ctx.setLineDash([]);
+  } else if(COAST.any()){
+    // no calculation yet: preview the planned coastal paths (only when a Coastwise switch is ON)
+    ctx.setLineDash([2,3]);ctx.lineWidth=1.2;ctx.strokeStyle='rgba(232,160,32,0.5)';
+    for(let i=0;i<waypoints.length-1;i++){
+      const P=legPlan(i);if(!P)continue;
+      ctx.beginPath();P.pts.forEach((p,j)=>{const[x,y]=proj(p.lat,p.lon);j?ctx.lineTo(x,y):ctx.moveTo(x,y);if(p.nav)used.add(p.name);});ctx.stroke();
+    }
+    ctx.setLineDash([]);
   }
+  if(COAST.any())drawCoastPoints(ctx,used);
   const wpList=wps||waypoints.map(w=>({icao:w.icao}));
   wpList.forEach((wp,i)=>{
     const ap=AP[wp.icao];if(!ap)return;
@@ -1668,6 +1967,19 @@ function optimizeRoute() {
     const gs = Math.max(30, windGS(tas,rDir,rSpd,track));
     return (maxTripFuel/FUEL_FLOW)*gs;
   }
+  // Leg distance and range check on the real route geometry: direct, or via the enabled coastal waypoints.
+  // A direct leg uses exactly the original formulas.
+  // When the whole journey is coastal (the from-to leg itself uses the enabled coastal route), a hop whose own coastal
+  // path was refused as too long would silently fly past the selected route: such hops are not allowed.
+  const coastalJourney = COAST.any() && COAST.legPath(fromIcao, toIcao).applied;
+  function legReach(fromIcao, toIcao) {
+    const P = COAST.legPath(fromIcao, toIcao);
+    const skips = coastalJourney && P.rejected;
+    if (P.segs.length === 1) return { dist: P.dist, ok: !skips && P.dist <= windRange(fromIcao, toIcao) };
+    if (!hasWind) return { dist: P.dist, ok: P.dist <= maxRangeNM };
+    const hours = P.segs.reduce((t,s) => t + s.dist/Math.max(30, windGS(tas,rDir,rSpd,s.track)), 0);
+    return { dist: P.dist, ok: hours <= maxTripFuel/FUEL_FLOW };
+  }
 
   const excludedAirports = window._excludedAirports||new Set();
   const candidates = Object.keys(AP).filter(k=>k!==fromIcao&&!excludedAirports.has(k));
@@ -1679,13 +1991,11 @@ function optimizeRoute() {
     for (const cand of candidates) {
       if (cand===curIcao||visited.has(cand)) continue;
       const ap=AP[cand];
-      const distToCandidate=haversine(cur.lat,cur.lon,ap.lat,ap.lon);
-      const legRange = windRange(curIcao, cand);
-      if (distToCandidate>legRange) continue;
+      if (!legReach(curIcao, cand).ok) continue;
       const bearToCandidate=bearing(cur.lat,cur.lon,ap.lat,ap.lon);
       const angDiff=Math.abs(((bearToCandidate-bearToDest+180+360)%360)-180);
       if (angDiff>120) continue;
-      const distFromCandToDest=haversine(ap.lat,ap.lon,dest.lat,dest.lon);
+      const distFromCandToDest=legReach(cand, destIcao).dist;
       const bonus = PRIORITY_AIRPORTS[cand]||0;
       const score = distFromCandToDest - bonus;
       if (score<bestScore) { bestScore=score; best=cand; }
@@ -1696,16 +2006,12 @@ function optimizeRoute() {
   const route=[fromIcao];
   const visited=new Set([fromIcao]);
   let current=fromIcao;
-  const directRange=windRange(fromIcao,toIcao);
-  const directDist=haversine(AP[fromIcao].lat,AP[fromIcao].lon,AP[toIcao].lat,AP[toIcao].lon);
-  if (directDist<=directRange) {
+  if (legReach(fromIcao,toIcao).ok) {
     route.push(toIcao);
   } else {
     let hops=0;
     while (current!==toIcao&&hops<15) {
-      const legRng=windRange(current,toIcao);
-      const distToDest=haversine(AP[current].lat,AP[current].lon,AP[toIcao].lat,AP[toIcao].lon);
-      if (distToDest<=legRng) { route.push(toIcao); break; }
+      if (legReach(current,toIcao).ok) { route.push(toIcao); break; }
       const next=findNext(current,toIcao,visited);
       if (!next) {
         msgEl.textContent=`Finner ingen gyldig rute fra ${current} til ${toIcao} innenfor rekkevidde.`;
@@ -1720,9 +2026,9 @@ function optimizeRoute() {
   if (hasWind) appliedRouteWind = `${rw.dir}/${rw.spd}`;
   renderRoute(); drawMap(); markStale();
   const stops=route.length-2;
-  const totalDist=route.reduce((sum,icao,i)=>{if(i===0)return 0;return sum+Math.round(haversine(AP[route[i-1]].lat,AP[route[i-1]].lon,AP[icao].lat,AP[icao].lon));},0);
+  const totalDist=route.reduce((sum,icao,i)=>{if(i===0)return 0;return sum+Math.round(COAST.legPath(route[i-1],icao).dist);},0);
   const stopsText=stops===0?'direkteflygning — ingen stopp nødvendig':`${stops} mellomlanding${stops>1?'er':''}: ${route.slice(1,-1).join(' → ')}`;
-  msgEl.textContent=`Optimalisert: ${fromIcao} → ${toIcao} — ${stopsText}. Total distanse: ${totalDist} NM. Max rekkevidde per leg: ${Math.round(maxRangeNM)} NM.`;
+  msgEl.textContent=`Optimalisert: ${fromIcao} → ${toIcao} — ${stopsText}. Total distanse: ${totalDist} NM. Max rekkevidde per leg: ${Math.round(maxRangeNM)} NM.${COAST.any()?` Kystrute (coastwise): ${COAST.enabledRoutes().map(r=>r.short).join(' + ')}.`:''}`;
   msgEl.style.display='block';
 }
 
@@ -1763,8 +2069,9 @@ drawMap();
 setToday(); updateZoneUI();
 loadOpsData();
 fcUpdateUI();
+cwUpdateUI();
 
 </script>
-<div class="pagever" title="Page version 7, built 2026-11-14">v7 · 2026-11-14</div>
+<div class="pagever" title="Page version 8, built 2026-11-14">v8 · 2026-11-14</div>
 </body>
 </html>
