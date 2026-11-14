@@ -1,8 +1,8 @@
 {
- "_note": "Entries up to 2026-09-30 were carried over from the log that had ended up in the LOOME repo. Their archive copies are not in any repo (missing: true). Every page except sun-moon.html has changed since its last entry and has not been re-logged yet.",
+ "_note": "Entries up to 2026-09-30 were carried over from the log that had ended up in the LOOME repo. Their archive copies are not in any repo (missing: true). Every page except sun-moon.html has changed since its last entry and has not been re-logged yet. ferry.html was re-logged on 2026-11-14 (v6 archived from the clone, v7 added); its v1-v5 archive copies are still missing.",
  "files": {
   "ferry.html": {
-   "current": 6,
+   "current": 7,
    "versions": [
     {
      "v": 1,
@@ -52,12 +52,18 @@
     {
      "v": 6,
      "file": "versions/ferry.v6.html",
-     "archived": "2026-09-30",
-     "note": "Discreet version label added; no other changes.",
-     "bytes": 240196,
-     "sha": "e6cbd252c5fa38e0bf2db67daa24abd705a2a766afccaecab6f54981ec863a28",
-     "body_sha": "7fbc5561f66798a76e3e068f4bce4ceb4dd0e60f3dc771a0c8c2802bfad38070",
-     "missing": true
+     "archived": "2026-11-14",
+     "note": "Page as it stood in the local clone before the forecast-wind build (label v6). 518 bytes larger than the 240196-byte v6 logged on 2026-09-30, so it was edited after that entry. Revert point: copy this file over ferry.html.",
+     "bytes": 240714,
+     "sha": "09fd3b16e740ca82a5156a8bf1b5a9be61469b1898fe287fbaf6bf7bacf2eeed"
+    },
+    {
+     "v": 7,
+     "file": "versions/ferry.v7.html",
+     "archived": "2026-11-14",
+     "note": "Forecast wind: per-leg GS | Wind | Forecast, Open-Meteo ICON pressure-level winds sampled every 20 NM, time-marched wind-triangle integration, cruise altitude slider 1,000-10,000 ft (single or per leg), async Calculate, impossible-wind refusal in Wind mode, version label with build date.",
+     "bytes": 275766,
+     "sha": "78049cd0451f06c7718b88b71779a0ed66a59bd227fd9de7efcbde293d65016d"
     }
    ]
   },

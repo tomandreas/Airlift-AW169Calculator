@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="page-version" content="6">
+<meta name="page-version" content="7">
 <title>AW169 — Ferry Planning</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -186,6 +186,18 @@
   .opt-btn { width: 100%; padding: 12px; margin-top: 8px; background: none; border: 1px solid var(--accent2); border-radius: 3px; color: var(--accent2); font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
   .opt-btn:hover { background: rgba(78,168,222,0.1); transform: translateY(-1px); }
 
+  /* Forecast wind */
+  .fc-title { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .fc-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .fc-status { font-family: 'IBM Plex Mono', monospace; font-size: 10px; line-height: 1.6; margin-top: 8px; color: var(--muted); }
+  .fc-status.ok { color: var(--ok); } .fc-status.warn { color: var(--accent); } .fc-status.bad { color: var(--danger); } .fc-status.busy { color: var(--accent2); }
+  .fc-attr { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .fc-attr a, .data-note a { color: var(--accent2); }
+  .fc-leg-msg { flex-basis: 100%; font-family: 'IBM Plex Mono', monospace; font-size: 10px; line-height: 1.5; color: var(--muted); }
+  .fc-leg-msg.warn { color: var(--accent); } .fc-leg-msg.bad { color: var(--danger); } .fc-leg-msg.ok { color: var(--ok); }
+  .calc-err { font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 1.6; padding: 10px 14px; border-left: 3px solid var(--danger); background: rgba(224,82,82,0.08); color: var(--text); }
+  .calc-err b { display: block; color: var(--danger); margin-bottom: 4px; }
+  .calc-btn:disabled { opacity: .6; cursor: progress; transform: none; }
   @media (max-width: 780px) {
     .planner-layout { grid-template-columns: minmax(0, 1fr); }
     .planner-layout > * { min-width: 0; }
@@ -266,6 +278,28 @@
             <button onclick="clearRouteWind()" style="background:none;border:1px solid var(--border);color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 8px;border-radius:2px;cursor:pointer;">Clear</button>
           </div>
           <div id="route-wind-msg" style="font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:6px;min-height:13px;color:var(--muted);"></div>
+        </div>
+        <div id="fc-box" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+          <div class="fc-title">Forecast wind (model estimate)</div>
+          <div class="fc-row">
+            <label>All legs</label>
+            <div class="wind-toggle">
+              <button type="button" class="wt-btn" id="fc-src-manual" onclick="fcSetAll(false)">Manual</button>
+              <button type="button" class="wt-btn" id="fc-src-fc" onclick="fcSetAll(true)">Forecast</button>
+            </div>
+            <label style="margin-left:6px">Altitude</label>
+            <div class="wind-toggle">
+              <button type="button" class="wt-btn active" id="fc-alt-single" onclick="setAltMode('single')">Single</button>
+              <button type="button" class="wt-btn" id="fc-alt-perleg" onclick="setAltMode('perleg')">Per leg</button>
+            </div>
+          </div>
+          <div class="slider-group" id="fc-alt-main">
+            <div class="slider-label-row"><label>Cruise altitude (AMSL)</label><span class="slider-val" id="fc-alt-val">1,000 ft</span></div>
+            <input type="range" id="fc-alt" min="1000" max="10000" step="1000" value="1000" oninput="setRouteAlt(this.value)">
+            <div class="range-hints"><span>1,000 ft</span><span>10,000 ft</span></div>
+          </div>
+          <div class="fc-status" id="fc-status"></div>
+          <div class="fc-attr">Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0). Forecast winds are model estimates, fetched when you press Calculate. Not an approved weather briefing.</div>
         </div>
 
       <!-- Route builder -->
@@ -514,6 +548,301 @@ function windGS(tas,windDir,windSpd,track) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// FORECAST WIND ENGINE (Open-Meteo, ICON pressure levels)
+// Time-marched wind-triangle integration along great-circle legs.
+// Needs haversine() and bearing() from MATH UTILS. No DOM access in here.
+// ═══════════════════════════════════════════════════════════
+const FWX = (function () {
+  const API = 'https://api.open-meteo.com/v1/forecast';
+  const MODEL_ID = 'icon_seamless';
+  const MODEL_LABEL = 'ICON seamless (DWD)';
+  const LEVELS = [1000, 975, 950, 925, 900, 850, 800, 700, 600];   // hPa, ascending height
+  const SPACING_NM = 20;          // wind sample spacing along a leg (spec: 10-20 NM)
+  const FT = 0.3048;
+  const FRESH_MS = 3 * 3600e3;    // ICON is updated every 3 h: younger data is reused as is
+  const MAX_POINTS = 240;         // unique sample points per calculation
+  const CHUNK = 50;               // locations per request
+  const MAX_AHEAD_MS = 7 * 86400e3;
+  const PAST_TOL_MS = 3600e3;
+  const MIN_GS = 30;              // kt: slower than this is treated as "cannot make progress"
+  const LOW_GAP_M = 200;          // altitude this far below the lowest model level is flagged
+  const R = Math.PI / 180;
+  let useModel = true;            // dropped for the session if the API rejects models=
+
+  // ── geometry ──────────────────────────────────────────────
+  function gcPoint(lat1, lon1, lat2, lon2, f) {
+    const p1 = lat1 * R, l1 = lon1 * R, p2 = lat2 * R, l2 = lon2 * R;
+    const d = haversine(lat1, lon1, lat2, lon2) / 3440.065;
+    if (d < 1e-9) return { lat: lat1, lon: lon1 };
+    const a = Math.sin((1 - f) * d) / Math.sin(d), b = Math.sin(f * d) / Math.sin(d);
+    const x = a * Math.cos(p1) * Math.cos(l1) + b * Math.cos(p2) * Math.cos(l2);
+    const y = a * Math.cos(p1) * Math.sin(l1) + b * Math.cos(p2) * Math.sin(l2);
+    const z = a * Math.sin(p1) + b * Math.sin(p2);
+    return { lat: Math.atan2(z, Math.hypot(x, y)) / R, lon: Math.atan2(y, x) / R };
+  }
+  // equal great-circle steps of at most SPACING_NM, endpoints included
+  function legSamples(a, b) {
+    const dist = haversine(a.lat, a.lon, b.lat, b.lon);
+    const n = Math.max(1, Math.ceil(dist / SPACING_NM - 1e-9));
+    const pts = [];
+    for (let k = 0; k <= n; k++)
+      pts.push(k === 0 ? { lat: a.lat, lon: a.lon } : k === n ? { lat: b.lat, lon: b.lon } : gcPoint(a.lat, a.lon, b.lat, b.lon, k / n));
+    return { dist, n, pts };
+  }
+  const q = x => Math.round(x * 20) / 20;                 // 0.05° grid: nearby samples share one forecast point
+  const locKey = (lat, lon) => q(lat).toFixed(2) + ',' + q(lon).toFixed(2);
+
+  // ── wind vectors (never average compass angles) ───────────
+  const toUV = (dir, spd) => ({ u: -spd * Math.sin(dir * R), v: -spd * Math.cos(dir * R) });   // direction wind blows TOWARDS
+  const fromUV = (u, v) => ({ dir: (Math.atan2(-u, -v) / R + 360) % 360, spd: Math.hypot(u, v) });
+
+  // Wind triangle with crosswind correction: GS = TAS·cos(WCA) − headwind.
+  // ok=false when the track cannot be held (crosswind >= TAS) or GS is below MIN_GS / not finite.
+  function triangle(tas, windFrom, spd, track) {
+    const rel = (windFrom - track) * R;
+    const hw = spd * Math.cos(rel), xw = spd * Math.sin(rel);
+    if (!(tas > 0) || !isFinite(hw) || !isFinite(xw) || Math.abs(xw) >= tas) return { ok: false, gs: NaN, hw, xw, reason: 'xw' };
+    const gs = tas * Math.cos(Math.asin(xw / tas)) - hw;
+    return { ok: isFinite(gs) && gs >= MIN_GS, gs, hw, xw, wca: Math.asin(xw / tas) / R, reason: isFinite(gs) && gs >= MIN_GS ? null : 'gs' };
+  }
+
+  // ── pressure levels ───────────────────────────────────────
+  const isaHeight = hPa => 44330.8 * (1 - Math.pow(hPa / 1013.25, 0.190263));
+  // levels bracketing the altitude (by ISA height) plus one extra level each side: real heights differ from ISA
+  function levelsForAlt(altM) {
+    let lo = -1;
+    for (let k = 0; k < LEVELS.length; k++) if (isaHeight(LEVELS[k]) <= altM) lo = k;
+    const a = Math.max(0, lo - 1), b = Math.min(LEVELS.length - 1, lo + 2);
+    return LEVELS.slice(a, b + 1);
+  }
+
+  // ── cache ─────────────────────────────────────────────────
+  const cache = new Map();   // locKey -> [entry]; entry = { t0, t1, levels:Set, elev, lv:{hPa:{s,d,z}}, fetchedAt, model }
+  function findEntry(key, tSec, need) {
+    const list = cache.get(key); if (!list) return null;
+    let best = null;
+    for (const e of list)
+      if (tSec >= e.t0 && tSec <= e.t1 && need.every(l => e.levels.has(l)) && (!best || e.fetchedAt > best.fetchedAt)) best = e;
+    return best;
+  }
+  function covers(key, t0, t1, need, nowMs, fresh) {
+    const list = cache.get(key); if (!list) return false;
+    return list.some(e => e.t0 <= t0 && e.t1 >= t1 && need.every(l => e.levels.has(l)) && (!fresh || nowMs - e.fetchedAt < FRESH_MS));
+  }
+  function clearCache() { cache.clear(); }
+
+  // ── wind lookup: position, time, altitude ─────────────────
+  // vertical profile at hourly index i -> {u,v,low,high} or null
+  function profile(e, i, altM) {
+    const rows = [];
+    for (const l of e.levels) {
+      const L = e.lv[l], s = L.s[i], d = L.d[i], z = L.z[i];
+      if (s == null || d == null || z == null || !isFinite(s + d + z)) continue;
+      const w = toUV(d, s); rows.push({ z, u: w.u, v: w.v });
+    }
+    if (!rows.length) return null;
+    rows.sort((a, b) => a.z - b.z);
+    if (altM <= rows[0].z) return { u: rows[0].u, v: rows[0].v, low: rows[0].z - altM > LOW_GAP_M, high: false };
+    const top = rows[rows.length - 1];
+    if (altM >= top.z) return { u: top.u, v: top.v, low: false, high: altM - top.z > LOW_GAP_M };
+    for (let k = 0; k < rows.length - 1; k++) {
+      const A = rows[k], B = rows[k + 1];
+      if (altM >= A.z && altM <= B.z) {
+        const f = B.z === A.z ? 0 : (altM - A.z) / (B.z - A.z);
+        return { u: A.u + (B.u - A.u) * f, v: A.v + (B.v - A.v) * f, low: false, high: false };
+      }
+    }
+    return null;
+  }
+  // -> {u,v,below,low,high,terrainM,fetchedAt} or {miss:'time'|'nodata'}
+  function windAt(key, tSec, altM, need) {
+    const e = findEntry(key, tSec, need);
+    if (!e) return { miss: 'time' };
+    let alt = altM, below = false;
+    if (isFinite(e.elev) && altM < e.elev) { below = true; alt = e.elev; }   // flagged, never silent
+    const i = Math.min(Math.floor((tSec - e.t0) / 3600), e.nT - 1), f = (tSec - e.t0) / 3600 - i;
+    const w0 = profile(e, i, alt);
+    if (!w0) return { miss: 'nodata' };
+    let u = w0.u, v = w0.v, low = w0.low, high = w0.high;
+    if (f > 1e-9 && i + 1 < e.nT) {
+      const w1 = profile(e, i + 1, alt);
+      if (!w1) return { miss: 'nodata' };
+      u = w0.u + (w1.u - w0.u) * f; v = w0.v + (w1.v - w0.v) * f; low = low || w1.low; high = high || w1.high;
+    }
+    return { u, v, below, low, high, terrainM: e.elev, fetchedAt: e.fetchedAt };
+  }
+
+  // ── one leg, marched in time ──────────────────────────────
+  // At each segment start the wind is taken at the time the aircraft reaches that sample; the end sample is
+  // predicted with the start GS and then corrected (Heun / trapezoid on 1/GS), so time and wind stay consistent.
+  function integrateLeg(o) {
+    const { a, b, tas, altFt, tStartMs } = o;
+    const altM = altFt * FT, need = levelsForAlt(altM);
+    const S = legSamples(a, b), segLen = S.dist / S.n;
+    const keys = S.pts.map(p => locKey(p.lat, p.lon));
+    let tSec = tStartMs / 1000, timeH = 0, hwSum = 0, xwMax = 0, minFetched = Infinity;
+    let nBelow = 0, maxTerrainM = -Infinity, low = false, high = false;
+    const seen = new Set();
+    const note = (w, k) => {
+      if (w.fetchedAt < minFetched) minFetched = w.fetchedAt;
+      if (w.low) low = true; if (w.high) high = true;
+      if (isFinite(w.terrainM) && w.terrainM > maxTerrainM) maxTerrainM = w.terrainM;
+      if (w.below && !seen.has(k)) { seen.add(k); nBelow++; }
+    };
+    for (let k = 0; k < S.n; k++) {
+      const track = bearing(S.pts[k].lat, S.pts[k].lon, S.pts[k + 1].lat, S.pts[k + 1].lon);
+      const wA = windAt(keys[k], tSec, altM, need);
+      if (wA.miss) return { status: 'fail', reason: wA.miss, at: k, nSamples: S.n + 1 };
+      note(wA, k);
+      const A = fromUV(wA.u, wA.v), tA = triangle(tas, A.dir, A.spd, track);
+      if (!tA.ok) return { status: 'fail', reason: 'triangle', detail: tA, at: k, nSamples: S.n + 1 };
+      const tPred = tSec + segLen / tA.gs * 3600;
+      const wB = windAt(keys[k + 1], tPred, altM, need);
+      if (wB.miss) return { status: 'fail', reason: wB.miss, at: k + 1, nSamples: S.n + 1 };
+      note(wB, k + 1);
+      const B = fromUV(wB.u, wB.v), tB = triangle(tas, B.dir, B.spd, track);
+      if (!tB.ok) return { status: 'fail', reason: 'triangle', detail: tB, at: k + 1, nSamples: S.n + 1 };
+      const dt = 0.5 * segLen * (1 / tA.gs + 1 / tB.gs);      // hours
+      timeH += dt; tSec += dt * 3600;
+      hwSum += segLen * 0.5 * (tA.hw + tB.hw);
+      xwMax = Math.max(xwMax, Math.abs(tA.xw), Math.abs(tB.xw));
+    }
+    const warn = [];
+    if (nBelow) warn.push(`${Math.round(altFt).toLocaleString('en-US')} ft is below terrain at ${nBelow} of ${S.n + 1} sample points (terrain up to ${Math.round(maxTerrainM / FT).toLocaleString('en-US')} ft); wind taken at terrain level there. Raise the cruise altitude.`);
+    if (low) warn.push('Altitude is well below the lowest model level at some points; lowest-level wind used.');
+    if (high) warn.push('Altitude is above the highest fetched model level at some points; highest-level wind used.');
+    return {
+      status: warn.length ? 'warn' : 'ok', warn, timeH, avgGS: S.dist / timeH, avgHW: hwSum / S.dist, maxXW: xwMax,
+      dist: S.dist, nSamples: S.n + 1, nBelow, altFt, tEndMs: tSec * 1000, tStartMs, fetchedAt: minFetched
+    };
+  }
+
+  // ── Open-Meteo requests ───────────────────────────────────
+  const isoDay = ms => new Date(ms).toISOString().slice(0, 10);
+  function buildUrl(pts, levels, d0, d1, withModel) {
+    const vars = [];
+    for (const l of levels) vars.push('wind_speed_' + l + 'hPa', 'wind_direction_' + l + 'hPa', 'geopotential_height_' + l + 'hPa');
+    return `${API}?latitude=${pts.map(p => q(p.lat).toFixed(2)).join(',')}&longitude=${pts.map(p => q(p.lon).toFixed(2)).join(',')}` +
+      `&hourly=${vars.join(',')}&wind_speed_unit=kn&timeformat=unixtime&timezone=GMT&start_date=${d0}&end_date=${d1}` +
+      (withModel ? `&models=${MODEL_ID}` : '');
+  }
+  async function getJSON(fetchJSON, url) {
+    let last;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const r = await fetchJSON(url);
+        if (r.status === 429 || r.status >= 500) { last = new Error('HTTP ' + r.status); await new Promise(res => setTimeout(res, 800)); continue; }
+        return r;
+      } catch (e) { last = e; await new Promise(res => setTimeout(res, 800)); }
+    }
+    throw last;
+  }
+  function parseChunk(json, pts, levels, nowMs, modelLabel) {
+    const arr = Array.isArray(json) ? json : [json];
+    if (arr.length !== pts.length) throw new Error('Unexpected forecast response');
+    arr.forEach((loc, k) => {
+      const h = loc && loc.hourly;
+      if (!h || !Array.isArray(h.time) || !h.time.length) throw new Error('Forecast response has no hourly data');
+      const lv = {};
+      for (const l of levels) {
+        const s = h['wind_speed_' + l + 'hPa'], d = h['wind_direction_' + l + 'hPa'], z = h['geopotential_height_' + l + 'hPa'];
+        if (!s || !d || !z) throw new Error('Forecast response lacks the ' + l + ' hPa wind variables');
+        lv[l] = { s, d, z };
+      }
+      const key = locKey(pts[k].lat, pts[k].lon);
+      const e = { t0: h.time[0], t1: h.time[h.time.length - 1], nT: h.time.length, levels: new Set(levels), lv, elev: loc.elevation, fetchedAt: nowMs, model: modelLabel };
+      if (!cache.has(key)) cache.set(key, []);
+      cache.get(key).push(e);
+    });
+  }
+  // fetch what the cache lacks. Returns { requests, errors:[], staleKeys:Set }
+  async function ensure(plan, fetchJSON, nowMs) {
+    const t0 = Math.floor(plan.t0Ms / 1000), t1 = Math.floor(plan.t1Ms / 1000);
+    const d0 = isoDay(plan.t0Ms - 3600e3), d1 = isoDay(plan.t1Ms + 3600e3);
+    const out = { requests: 0, errors: [], staleKeys: new Set() };
+    const want = [...plan.points.entries()].filter(([k]) => !covers(k, t0, t1, plan.need, nowMs, true));
+    if (!want.length) return out;
+    const chunks = [];
+    for (let i = 0; i < want.length; i += CHUNK) chunks.push(want.slice(i, i + CHUNK));
+    await Promise.all(chunks.map(async ch => {
+      const pts = ch.map(([, p]) => p);
+      try {
+        let r = await getJSON(fetchJSON, buildUrl(pts, plan.need, d0, d1, useModel)); out.requests++;
+        if (r.status === 400 && useModel && /model/i.test(String(r.json && r.json.reason))) {
+          useModel = false;
+          r = await getJSON(fetchJSON, buildUrl(pts, plan.need, d0, d1, false)); out.requests++;
+        }
+        if (r.status !== 200) throw new Error(r.json && r.json.reason ? String(r.json.reason).slice(0, 200) : 'HTTP ' + r.status);
+        parseChunk(r.json, pts, plan.need, nowMs, useModel ? MODEL_LABEL : 'Open-Meteo best match');
+      } catch (e) {
+        out.errors.push(String(e.message || e));
+        for (const [k] of ch) if (covers(k, t0, t1, plan.need, nowMs, false)) out.staleKeys.add(k);
+      }
+    }));
+    return out;
+  }
+
+  // ── whole route ───────────────────────────────────────────
+  // legs: [{ fc, a:{lat,lon}, b, altFt }  |  { fc:false, timeH }], stopMin[i] = ground stop after leg i
+  // returns { ok, kind, message, results:[per leg], meta }
+  async function solve(o) {
+    const { legs, stopMin, startMs, tas, fetchJSON } = o, nowMs = o.nowMs != null ? o.nowMs : Date.now();
+    const fcIdx = legs.map((l, i) => l.fc ? i : -1).filter(i => i >= 0);
+    if (!fcIdx.length) return { ok: true, results: legs.map(() => null), meta: null };
+    if (startMs < nowMs - PAST_TOL_MS)
+      return { ok: false, kind: 'past', message: 'The departure time is in the past. Forecast mode only uses forecasts for future flights; it does not use past weather as a forecast. Use GS or Wind mode, or move the departure.' };
+    if (startMs > nowMs + MAX_AHEAD_MS)
+      return { ok: false, kind: 'horizon', message: 'The departure is more than 7 days ahead, beyond the range of the ICON forecast (about 7.5 days). Choose an earlier date, or use GS or Wind mode.' };
+
+    const points = new Map(); let need = new Set(); let boundH = 0;
+    for (const i of fcIdx) {
+      const L = legs[i], S = legSamples(L.a, L.b);
+      S.pts.forEach(p => { const k = locKey(p.lat, p.lon); if (!points.has(k)) points.set(k, { lat: q(p.lat), lon: q(p.lon) }); });
+      levelsForAlt(L.altFt * FT).forEach(l => need.add(l));
+    }
+    if (points.size > MAX_POINTS)
+      return { ok: false, kind: 'toolong', message: `This route needs ${points.size} forecast points (limit ${MAX_POINTS}). Shorten the route or use GS or Wind mode for some legs.` };
+    need = [...need].sort((x, y) => y - x);
+    legs.forEach((l, i) => { boundH += l.fc ? haversine(l.a.lat, l.a.lon, l.b.lat, l.b.lon) / Math.max(40, 0.5 * tas) : l.timeH; boundH += (stopMin[i] || 0) / 60; });
+    const plan = { points, need, t0Ms: startMs, t1Ms: startMs + boundH * 3600e3 + 3600e3 };
+
+    let results, ens, extended = 0;
+    for (;;) {
+      ens = await ensure(plan, o.fetchJSON, nowMs);
+      results = march(legs, stopMin, startMs, tas);
+      const timeMiss = results.some(r => r && r.status === 'fail' && r.reason === 'time');
+      if (timeMiss && !ens.errors.length && extended < 2) { plan.t1Ms += 24 * 3600e3; extended++; continue; }
+      break;
+    }
+    const timeMiss = results.some(r => r && r.status === 'fail' && r.reason === 'time');
+    if (timeMiss && ens.errors.length)
+      return { ok: false, kind: 'network', message: 'The forecast could not be retrieved: ' + [...new Set(ens.errors)].join('; ') + '. Use GS or Wind mode for the affected legs, or try again.' };
+    const used = results.filter(r => r && r.fetchedAt < Infinity);
+    const fetchedAt = used.length ? Math.min(...used.map(r => r.fetchedAt)) : nowMs;
+    const stale = ens.staleKeys.size > 0 || (nowMs - fetchedAt >= FRESH_MS && ens.errors.length > 0);
+    return { ok: true, results, meta: { model: useModel ? MODEL_LABEL : 'Open-Meteo best match', fetchedAt, stale, errors: ens.errors, requests: ens.requests, points: points.size, levels: need } };
+  }
+  function march(legs, stopMin, startMs, tas) {
+    const results = []; let t = startMs, stopped = false;
+    legs.forEach((L, i) => {
+      if (stopped) { results.push({ status: 'skipped' }); return; }
+      let r;
+      if (L.fc) {
+        r = integrateLeg({ a: L.a, b: L.b, tas, altFt: L.altFt, tStartMs: t });
+        if (r.status === 'fail') { stopped = true; results.push(r); return; }
+        t = r.tEndMs;
+      } else { r = null; t += L.timeH * 3600e3; }
+      results.push(r);
+      t += (stopMin[i] || 0) * 60000;
+    });
+    return results;
+  }
+
+  return { solve, triangle, legSamples, gcPoint, levelsForAlt, toUV, fromUV, windAt, integrateLeg, locKey, clearCache, isaHeight,
+    MODEL_LABEL, MODEL_ID, SPACING_NM, MIN_GS, FRESH_MS, _cache: cache, _march: march };
+})();
+
+// ═══════════════════════════════════════════════════════════
 // TIME UTILS
 // ═══════════════════════════════════════════════════════════
 function parseTime(str) {
@@ -644,9 +973,23 @@ function fmtDuration(mins) {
 // WAYPOINT STATE
 // ═══════════════════════════════════════════════════════════
 let waypoints = [
-  { icao:'ENHF', mode:'gs', gs:125, windDir:270, windSpd:0, gstop:30 },
-  { icao:'ENTC', mode:'gs', gs:125, windDir:270, windSpd:0, gstop:30 },
+  { icao:'ENHF', mode:'gs', gs:125, windDir:270, windSpd:0, gstop:30, altFt:1000 },
+  { icao:'ENTC', mode:'gs', gs:125, windDir:270, windSpd:0, gstop:30, altFt:1000 },
 ];
+
+// Forecast wind state. mode per leg: 'gs' | 'wind' | 'fc'.
+const FC = {
+  alt: 1000,             // route cruise altitude, ft AMSL (default 1,000)
+  altMode: 'single',     // 'single' | 'perleg'
+  perLegInit: false,     // per-leg altitudes are copied from the route altitude the first time per-leg mode is chosen
+  autoNew: false,        // legs added later follow the route-level Forecast choice
+  busy: false,
+  last: null,            // { model, fetchedAt, stale, points, requests }
+  state: 'idle', msg: ''
+};
+const fmtFt = ft => Number(ft).toLocaleString('en-US') + ' ft';
+const esc = x => String(x).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function legAlt(i) { return FC.altMode === 'single' ? FC.alt : (waypoints[i].altFt ?? FC.alt); }
 
 function currentTas() { return parseFloat(document.getElementById('tas').value)||125; }
 function routeWind() {
@@ -656,8 +999,11 @@ function routeWind() {
 }
 function newLeg(icao) {
   const w=routeWind();
-  return w.valid ? { icao, mode:'wind', gs:currentTas(), gsAuto:true, windDir:w.dir%360, windSpd:w.spd, gstop:30 }
-                 : { icao, mode:'gs', gs:currentTas(), gsAuto:true, windDir:270, windSpd:0, gstop:30 };
+  const leg = w.valid ? { icao, mode:'wind', gs:currentTas(), gsAuto:true, windDir:w.dir%360, windSpd:w.spd, gstop:30 }
+                      : { icao, mode:'gs', gs:currentTas(), gsAuto:true, windDir:270, windSpd:0, gstop:30 };
+  leg.altFt = FC.alt;                       // new legs inherit the route altitude
+  if (FC.autoNew) leg.mode = 'fc';
+  return leg;
 }
 function addWaypoint() {
   // the old destination now starts a leg: give it the current TAS / route wind
@@ -717,7 +1063,7 @@ function renderRoute() {
         const d = haversine(ap.lat,ap.lon,nextAp.lat,nextAp.lon);
         distLabel = `${Math.round(d)} NM`;
       }
-      const isWind = wp.mode === 'wind';
+      const isWind = wp.mode === 'wind', isFc = wp.mode === 'fc';
       const computedGS = getGS(i);
       html += `<div class="leg-connector">
         <div class="leg-line-col"><div class="leg-dot"></div><div class="leg-vert"></div></div>
@@ -726,12 +1072,13 @@ function renderRoute() {
             <div class="leg-top">
               <span class="leg-dist ${ap&&nextAp?'computed':''}" id="legdist-${i}">${distLabel}</span>
               <div class="wind-toggle">
-                <button class="wt-btn ${!isWind?'active':''}" onclick="setLegMode(${i},'gs')">GS</button>
+                <button class="wt-btn ${!isWind&&!isFc?'active':''}" onclick="setLegMode(${i},'gs')">GS</button>
                 <button class="wt-btn ${isWind?'active':''}" onclick="setLegMode(${i},'wind')">Wind</button>
+                <button class="wt-btn ${isFc?'active':''}" onclick="setLegMode(${i},'fc')">Forecast</button>
               </div>
             </div>
             <div class="wind-fields" id="leg-fields-${i}">
-              ${isWind ? `
+              ${isFc ? fcLegHtml(i) : isWind ? `
                 <label>From</label>
                 <input type="number" value="${wp.windDir}" min="0" max="360" inputmode="numeric" style="width:65px"
                   oninput="updateLeg(${i},'windDir',this.value)">
@@ -739,7 +1086,7 @@ function renderRoute() {
                 <input type="number" value="${wp.windSpd}" min="0" max="150" inputmode="numeric" style="width:60px"
                   oninput="updateLeg(${i},'windSpd',this.value)">
                 <span class="unit">kt</span>
-                <span class="gs-result">→ GS: ${computedGS} kt</span>
+                ${legWindCheck(i).ok ? `<span class="gs-result">→ GS: ${computedGS} kt</span>` : `<span class="gs-result" style="color:var(--danger)">✗ cannot hold track in this wind</span>`}
               ` : `
                 <label>Groundspeed</label>
                 <input type="number" value="${wp.gsAuto === false ? wp.gs : currentTas()}" min="50" max="250" inputmode="numeric" style="width:72px"
@@ -753,6 +1100,7 @@ function renderRoute() {
     }
   });
   container.innerHTML = html;
+  fcUpdateUI();
 }
 
 function updateICAO(i, val) {
@@ -787,7 +1135,12 @@ function renderLegDistances() {
   });
 }
 
-function setLegMode(i, mode) { waypoints[i].mode = mode; renderRoute(); markStale(); }
+function setLegMode(i, mode) {
+  waypoints[i].mode = mode;
+  if (mode === 'fc') { if (waypoints[i].altFt == null) waypoints[i].altFt = FC.alt; }
+  delete waypoints[i].fc;
+  renderRoute(); markStale();
+}
 
 function updateLeg(i, field, val) {
   waypoints[i][field] = parseFloat(val)||0;
@@ -795,13 +1148,18 @@ function updateLeg(i, field, val) {
   markStale();
   if (waypoints[i].mode === 'wind') {
     const el = document.querySelector(`#leg-fields-${i} .gs-result`);
-    if (el) el.textContent = `→ GS: ${getGS(i)} kt`;
+    if (el) {
+      const chk = legWindCheck(i);
+      el.textContent = chk.ok ? `→ GS: ${getGS(i)} kt` : '✗ cannot hold track in this wind';
+      el.style.color = chk.ok ? '' : 'var(--danger)';
+    }
   }
 }
 
 function getGS(i) {
   const wp = waypoints[i];
   const tas = currentTas();
+  if (wp.mode === 'fc') return wp.fc && wp.fc.avgGS ? Math.round(wp.fc.avgGS) : tas;
   if (wp.mode === 'gs') return wp.gsAuto === false ? (wp.gs||tas) : tas;
   const a = AP[(wp.icao||'').toUpperCase()];
   const b = AP[(waypoints[i+1]?.icao||'').toUpperCase()];
@@ -820,12 +1178,15 @@ function applyRouteWind() {
     msg.textContent = dirEmpty && spdEmpty ? '' : dirEmpty ? 'Enter the wind direction too' : spdEmpty ? 'Enter the wind speed too' : 'Direction 0–360°, speed 0 or more';
     return false;
   }
+  let nFc = 0;
   waypoints.forEach((wp,i) => {
-    if (i < waypoints.length-1) { wp.windDir=w.dir%360; wp.windSpd=w.spd; wp.mode='wind'; }
+    if (i >= waypoints.length-1) return;
+    if (wp.mode === 'fc') { nFc++; return; }          // Forecast legs are never overwritten by the manual route wind
+    wp.windDir=w.dir%360; wp.windSpd=w.spd; wp.mode='wind';
   });
   appliedRouteWind = `${w.dir}/${w.spd}`;
   msg.style.color = 'var(--muted)';
-  msg.textContent = `Applied to all legs: ${String(Math.round(w.dir%360)).padStart(3,'0')}° / ${w.spd} kt`;
+  msg.textContent = `Applied to ${nFc ? 'the non-forecast legs' : 'all legs'}: ${String(Math.round(w.dir%360)).padStart(3,'0')}° / ${w.spd} kt${nFc ? ` (${nFc} forecast leg${nFc>1?'s':''} unchanged)` : ''}`;
   renderRoute(); markStale();
   return true;
 }
@@ -835,7 +1196,7 @@ function clearRouteWind() {
   document.getElementById('route-wind-spd').value='';
   const tas = currentTas();
   waypoints.forEach((wp,i) => {
-    if (i < waypoints.length-1) { wp.mode='gs'; wp.gs=tas; wp.gsAuto=true; }
+    if (i < waypoints.length-1 && wp.mode !== 'fc') { wp.mode='gs'; wp.gs=tas; wp.gsAuto=true; }
   });
   appliedRouteWind = null;
   document.getElementById('route-wind-msg').textContent = '';
@@ -855,12 +1216,14 @@ function markStale() {
   }
   document.getElementById('timeline').style.opacity = '.45';
   document.getElementById('summary-bar').style.opacity = '.45';
+  document.querySelectorAll('.fc-res').forEach(e => e.style.opacity = '.45');
 }
 
 // ═══════════════════════════════════════════════════════════
 // CALCULATION
 // ═══════════════════════════════════════════════════════════
-function calculate(quiet) {
+async function calculate(quiet) {
+  if (FC.busy) return;
   const planDate = document.getElementById('plan-date').value;
   if (!planDate) { alert('Enter a planning date first.'); return; }
   const w = routeWind();
@@ -875,22 +1238,83 @@ function calculate(quiet) {
       return;
     }
   }
-  const legs = [];
-  for (let i=0; i<waypoints.length-1; i++) {
-    const a = AP[waypoints[i].icao], b = AP[waypoints[i+1].icao];
+  const base = zonedMs(planDate, depMins);
+  const nLegs = waypoints.length-1;
+
+  // 1. Classify the legs. Manual GS / Wind legs have a fixed time; Forecast legs are marched in time by FWX.
+  const geo = [], solveLegs = [], stopMin = [], fixedGS = [], problems = [];
+  for (let i=0; i<nLegs; i++) {
+    const wp = waypoints[i];
+    const a = AP[wp.icao], b = AP[waypoints[i+1].icao];
     const dist = haversine(a.lat,a.lon,b.lat,b.lon);
     const track = bearing(a.lat,a.lon,b.lat,b.lon);
-    const gs = Math.max(30,getGS(i));
-    const timeH = dist/gs;
+    geo.push({a,b,dist,track});
+    stopMin.push(i+1 < waypoints.length-1 ? waypoints[i+1].gstop : 0);
+    if (wp.mode === 'fc' && dist >= 0.5) {
+      solveLegs.push({ fc:true, a:{lat:a.lat,lon:a.lon}, b:{lat:b.lat,lon:b.lon}, altFt:legAlt(i) });
+      fixedGS.push(null);
+    } else {
+      if (wp.mode === 'wind' && !legWindCheck(i).ok)
+        problems.push(`Leg ${i+1} ${wp.icao}–${waypoints[i+1].icao}: the wind (${String(Math.round(wp.windDir)).padStart(3,'0')}° / ${wp.windSpd} kt) is too strong to hold the track or leaves less than ${FWX.MIN_GS} kt groundspeed.`);
+      const gs = Math.max(30,getGS(i));
+      solveLegs.push({ fc:false, timeH:dist/gs });
+      fixedGS.push(gs);
+    }
+  }
+  if (problems.length) { renderCalcError('Cannot calculate this route', problems); return; }
+
+  // 2. Forecast legs: fetch (or reuse cached) winds and integrate along each leg, in time order.
+  let solved = { ok:true, results: solveLegs.map(()=>null), meta:null };
+  if (solveLegs.some(l=>l.fc)) {
+    FC.busy = true; setCalcBusy(true); fcSetState('busy', 'Fetching forecast…');
+    try { solved = await FWX.solve({ legs:solveLegs, stopMin, startMs:base, tas, fetchJSON:fcFetch }); }
+    catch (e) { solved = { ok:false, kind:'error', message:'Unexpected error in the forecast calculation: ' + (e && e.message || e) }; }
+    FC.busy = false; setCalcBusy(false);
+  }
+  if (!solved.ok) {
+    waypoints.forEach(wp => { delete wp.fc; });
+    fcSetState('bad', solved.message);
+    renderRoute();
+    renderCalcError('Forecast not available', [esc(solved.message), 'Nothing was assumed: switch the forecast legs to GS or Wind to calculate manually.']);
+    return;
+  }
+  const fails = [];
+  solved.results.forEach((r,i) => {
+    if (!r) return;
+    if (r.status === 'fail') {
+      const nm = `Leg ${i+1} ${waypoints[i].icao}–${waypoints[i+1].icao}`;
+      fails.push(r.reason === 'triangle'
+        ? `${nm}: the forecast wind makes it impossible to hold the track (crosswind at or above TAS, or groundspeed below ${FWX.MIN_GS} kt) near sample point ${r.at+1} of ${r.nSamples}. Try another altitude or time, or use GS / Wind mode.`
+        : `${nm}: no forecast data for this leg's time window (beyond the forecast range, or values missing). Use GS / Wind mode for this leg.`);
+    } else if (r.status === 'skipped') {
+      fails.push(`Leg ${i+1} ${waypoints[i].icao}–${waypoints[i+1].icao}: not evaluated because an earlier leg failed.`);
+    }
+  });
+  if (fails.length) {
+    waypoints.forEach(wp => { delete wp.fc; });
+    fcSetState('bad', 'Forecast could not be applied to every leg.');
+    renderRoute();
+    renderCalcError('Cannot calculate this route', fails);
+    return;
+  }
+
+  // 3. Legs with their integrated (Forecast) or fixed (GS / Wind) times.
+  const sig = fcSig();
+  const legs = [];
+  for (let i=0; i<nLegs; i++) {
+    const g = geo[i], r = solved.results[i], fc = !!solveLegs[i].fc;
+    const timeH = fc ? r.timeH : solveLegs[i].timeH;
+    const gs = fc ? Math.round(r.avgGS) : fixedGS[i];
     const tripFuel = timeH*FUEL_FLOW;
     const contFuel = tripFuel*CONT_PCT;
     const minFuelDep = tripFuel+contFuel+FINAL_RESERVE;
     const feasible = minFuelDep<=MAX_FUEL;
-    legs.push({from:waypoints[i].icao,to:waypoints[i+1].icao,dist:Math.round(dist),
-               track:Math.round(track),gs,timeH,timeMins:timeH*60,tripFuel,contFuel,minFuelDep,feasible});
+    legs.push({from:waypoints[i].icao,to:waypoints[i+1].icao,dist:Math.round(g.dist),
+               track:Math.round(g.track),gs,timeH,timeMins:timeH*60,tripFuel,contFuel,minFuelDep,feasible,
+               mode: fc ? 'fc' : (waypoints[i].mode === 'fc' ? 'gs' : waypoints[i].mode), fc: fc ? r : null});
+    if (fc) waypoints[i].fc = { ...r, sig, model: solved.meta.model, stale: solved.meta.stale }; else delete waypoints[i].fc;
   }
   const wps = [];
-  const base = zonedMs(planDate, depMins);
   const abs = mins => new Date(base + (mins - depMins) * 60000);
   let currentTime = depMins;
   for (let i=0; i<waypoints.length; i++) {
@@ -912,11 +1336,134 @@ function calculate(quiet) {
       }
     }
   }
+  if (solved.meta) {
+    const nWarn = legs.filter(l=>l.mode==='fc' && l.fc.status==='warn').length;
+    FC.last = { ...solved.meta, from: base, to: wps[wps.length-1].arrAbs.getTime() };
+    fcSetState(solved.meta.stale ? 'warn' : nWarn ? 'warn' : 'ok', fcStatusText(solved.meta, nWarn));
+  } else fcSetState('idle', '');
+  renderRoute();
   renderResults(legs,wps,quiet);
   drawMap(legs,wps);
   const n = document.getElementById('stale-note'); if (n) n.remove();
   document.getElementById('timeline').style.opacity = '';
   document.getElementById('summary-bar').style.opacity = '';
+}
+
+// ═══════════════════════════════════════════════════════════
+// FORECAST WIND UI
+// ═══════════════════════════════════════════════════════════
+// what the forecast results depend on: date, time, zone, TAS, route, modes, altitudes, ground stops
+function fcSig() {
+  return JSON.stringify([document.getElementById('plan-date').value, document.getElementById('dep-time').value, PLAN_ZONE, currentTas(), FC.altMode,
+    waypoints.map((w,i) => [w.icao, w.mode, i < waypoints.length-1 ? legAlt(i) : 0, w.gstop])]);
+}
+// manual Wind mode: can the aircraft hold the track and make progress?
+function legWindCheck(i) {
+  const wp = waypoints[i];
+  if (!wp || wp.mode !== 'wind') return { ok:true };
+  const a = AP[(wp.icao||'').toUpperCase()], b = AP[(waypoints[i+1]?.icao||'').toUpperCase()];
+  if (!a || !b) return { ok:true };
+  return FWX.triangle(currentTas(), wp.windDir, wp.windSpd, bearing(a.lat,a.lon,b.lat,b.lon));
+}
+const hwLabel = hw => Math.abs(hw) < 0.5 ? 'HW/TW 0 kt' : hw > 0 ? `HW ${Math.round(hw)} kt` : `TW ${Math.round(-hw)} kt`;
+
+function fcLegHtml(i) {
+  const wp = waypoints[i], alt = legAlt(i), perLeg = FC.altMode === 'perleg';
+  let h = '';
+  if (perLeg) h += `<div class="slider-group" style="flex-basis:100%"><div class="slider-label-row"><label>Cruise altitude</label><span class="slider-val" id="legalt-val-${i}">${fmtFt(alt)}</span></div>
+    <input type="range" min="1000" max="10000" step="1000" value="${alt}" style="width:100%;padding:0" oninput="setLegAlt(${i},this.value)"></div>`;
+  else h += `<label>Cruise alt</label><span class="gs-result fc-alt-ro" style="color:var(--accent2);margin-left:0">${fmtFt(alt)}</span>`;
+  const r = wp.fc, fresh = r && r.sig === fcSig();
+  if (!r) h += `<span class="fc-leg-msg">Forecast wind is fetched when you press Calculate.</span>`;
+  else if (!fresh) h += `<span class="fc-leg-msg warn fc-res">Inputs changed since the last calculation. Press Calculate.</span>`;
+  else {
+    h += `<span class="gs-result fc-res">→ GS ${Math.round(r.avgGS)} kt avg · ${hwLabel(r.avgHW)}</span>`;
+    (r.warn || []).forEach(m => { h += `<span class="fc-leg-msg warn fc-res">⚠ ${esc(m)}</span>`; });
+    h += `<span class="fc-leg-msg ${r.stale ? 'warn' : 'ok'} fc-res">${r.stale ? '⚠ STALE forecast (refresh failed), data fetched ' : '✓ Forecast, fetched '}${hm(new Date(r.fetchedAt))} ${zoneLbl()} · ${esc(r.model)}</span>`;
+  }
+  return h;
+}
+
+function setRouteAlt(v) {
+  FC.alt = Math.min(10000, Math.max(1000, parseInt(v) || 1000));
+  document.getElementById('fc-alt-val').textContent = fmtFt(FC.alt);
+  document.querySelectorAll('.fc-alt-ro').forEach(el => el.textContent = fmtFt(FC.alt));
+  markStale();
+}
+function setAltMode(m) {
+  if (m === 'perleg' && !FC.perLegInit) { waypoints.forEach(w => { w.altFt = FC.alt; }); FC.perLegInit = true; }   // first switch: every leg starts at the route altitude
+  FC.altMode = m;
+  renderRoute(); markStale();
+}
+function setLegAlt(i, v) {
+  waypoints[i].altFt = Math.min(10000, Math.max(1000, parseInt(v) || 1000));
+  const el = document.getElementById('legalt-val-' + i); if (el) el.textContent = fmtFt(waypoints[i].altFt);
+  markStale();
+}
+// route-level choice: all legs Forecast, or back to manual (GS). Individual legs can still be changed afterwards.
+function fcSetAll(on) {
+  waypoints.forEach((wp,i) => {
+    if (i >= waypoints.length-1) return;
+    if (on) { wp.mode = 'fc'; if (wp.altFt == null) wp.altFt = FC.alt; delete wp.fc; }
+    else if (wp.mode === 'fc') { wp.mode = 'gs'; wp.gsAuto = true; wp.gs = currentTas(); delete wp.fc; }
+  });
+  FC.autoNew = !!on;
+  renderRoute(); markStale();
+}
+function fcSetState(state, msg) { FC.state = state; FC.msg = msg; fcUpdateUI(); }
+function fcStatusText(meta, nWarn) {
+  const t = ms => hm(new Date(ms)) + ' ' + zoneLbl();
+  const src = `Open-Meteo · ${esc(meta.model)}`;
+  if (meta.stale) return `⚠ STALE forecast: could not refresh (${esc([...new Set(meta.errors)].join('; ') || 'no connection')}). Using data fetched ${t(meta.fetchedAt)}. ${src}`;
+  return `${nWarn ? `⚠ ${nWarn} leg warning${nWarn>1?'s':''} · ` : '✓ '}Forecast OK · ${src} · fetched ${t(meta.fetchedAt)} · ${meta.requests ? meta.requests + ' request' + (meta.requests>1?'s':'') + ', ' : 'from cache, '}${meta.points} points`;
+}
+function fcUpdateUI() {
+  const el = document.getElementById('fc-status'); if (!el) return;
+  const n = Math.max(0, waypoints.length-1), nFc = waypoints.slice(0, n).filter(w => w.mode === 'fc').length;
+  document.getElementById('fc-src-fc').classList.toggle('active', n > 0 && nFc === n);
+  document.getElementById('fc-src-manual').classList.toggle('active', nFc === 0);
+  document.getElementById('fc-alt-single').classList.toggle('active', FC.altMode === 'single');
+  document.getElementById('fc-alt-perleg').classList.toggle('active', FC.altMode === 'perleg');
+  document.getElementById('fc-alt-main').style.display = FC.altMode === 'single' ? '' : 'none';
+  document.getElementById('fc-alt-val').textContent = fmtFt(FC.alt);
+  let cls = '', txt;
+  if (FC.state === 'busy') { cls = 'busy'; txt = FC.msg; }
+  else if (!nFc) txt = 'No leg uses forecast wind. Choose Forecast above, or per leg.';
+  else if (FC.state === 'idle') txt = 'Forecast not fetched yet. It is fetched when you press Calculate.';
+  else { cls = FC.state; txt = FC.msg; }
+  el.className = 'fc-status ' + cls; el.innerHTML = txt;
+}
+function setCalcBusy(b) {
+  const btn = document.querySelector('.calc-btn'); if (!btn) return;
+  btn.disabled = b; btn.textContent = b ? 'Fetching forecast…' : 'Calculate Route';
+}
+async function fcFetch(url) {
+  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 15000);
+  try {
+    const r = await fetch(url, { signal: ctl.signal, cache: 'no-store' });
+    let json = null; try { json = await r.json(); } catch (e) {}
+    return { status: r.status, json };
+  } finally { clearTimeout(to); }
+}
+function renderCalcError(title, lines) {
+  const panel = document.getElementById('results-panel');
+  panel.style.display = 'block';
+  const n = document.getElementById('stale-note'); if (n) n.remove();
+  document.getElementById('summary-bar').innerHTML = '';
+  document.getElementById('summary-bar').style.opacity = '';
+  const tl = document.getElementById('timeline'); tl.style.opacity = '';
+  tl.innerHTML = `<div class="calc-err"><b>${esc(title)}</b>${lines.map(l => `<div>${l}</div>`).join('')}</div>`;
+  panel.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+function fcSummaryItem(legs) {
+  const fl = legs.filter(l => l.mode === 'fc'), nW = fl.filter(l => l.fc.status === 'warn').length, stale = FC.last && FC.last.stale;
+  const txt = stale ? '⚠ STALE FORECAST' : nW ? `⚠ ${nW} WARNING${nW>1?'S':''}` : '✓ FORECAST OK';
+  return `<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">Forecast wind<br><span style="font-size:14px;color:${stale||nW?'var(--accent)':'var(--ok)'};">${txt}</span></div>`;
+}
+function fcNote(legs) {
+  if (!legs.some(l => l.mode === 'fc') || !FC.last) return '';
+  const t = ms => hm(new Date(ms)) + ' ' + zoneLbl();
+  return `<div class="data-note">Forecast winds: Open-Meteo, ${esc(FC.last.model)}, a model-based estimate fetched ${t(FC.last.fetchedAt)}${FC.last.stale ? ' (STALE: refresh failed)' : ''}, used for ${t(FC.last.from)}–${t(FC.last.to)}. Groundspeed, time and fuel for forecast legs come from a wind-triangle calculation sampled every 20 NM at each point's own time and altitude. These are not guaranteed or operationally validated winds, and this is not an approved aviation weather briefing or flight-planning system. Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0).</div>`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -938,6 +1485,7 @@ function renderResults(legs,wps,quiet) {
     <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">Block time<br><span style="font-size:18px;color:var(--white)">${fmtDuration(totalTime)}</span></div>
     <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">Total fuel burned<br><span style="font-size:18px;color:var(--white)">${Math.round(totalFuel)} kg</span></div>
     <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">Status<br><span style="font-size:14px;color:${allFeasible?'var(--ok)':'var(--danger)'};">${allFeasible?'✓ ALL LEGS OK':'⚠ RANGE EXCEEDED'}</span></div>
+    ${legs.some(l=>l.mode==='fc')?fcSummaryItem(legs):''}
     <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">ATS / fuel hours<br><span style="font-size:14px;color:${nBad?'var(--danger)':nWarn?'var(--accent)':'var(--ok)'};">${nBad?`⚠ ${nBad} CONFLICT${nBad>1?'S':''}`:nWarn?`${nWarn} ADVISOR${nWarn>1?'IES':'Y'}`:'✓ ALL OPEN'}</span></div>
   `;
   let html='';
@@ -982,17 +1530,18 @@ function renderResults(legs,wps,quiet) {
           <div class="tl-leg-info">
             <span>${leg.dist} NM</span>
             <span>Track ${leg.track}°</span>
-            <span>GS ${leg.gs} kt</span>
+            <span>GS ${leg.gs} kt${leg.mode==='fc'?' avg':''}</span>${leg.mode==='fc'?`<span>${hwLabel(leg.fc.avgHW)}</span><span>${fmtFt(leg.fc.altFt)}</span>`:''}
             <span>${fmtDuration(leg.timeMins)}</span>
             <span>Burn ${Math.round(leg.tripFuel)} kg</span>
             <span>Min fuel ${Math.round(leg.minFuelDep)} kg</span>
           </div>
+          ${leg.mode==='fc'?leg.fc.warn.map(m=>`<div class="tl-leg-warn" style="color:var(--accent);border-left-color:var(--accent);background:rgba(232,160,32,0.08)">⚠ ${esc(m)}</div>`).join(''):''}
           ${!leg.feasible?`<div class="tl-leg-warn">⚠ Leg requires ${Math.round(leg.minFuelDep)} kg — exceeds max fuel (${MAX_FUEL} kg). Cannot complete this leg.</div>`:''}
         </div>`:''}
       </div>
     </div>`;
   }
-  tlEl.innerHTML=html + dataNote();
+  tlEl.innerHTML=html + fcNote(legs) + dataNote();
   if (!quiet) panel.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
@@ -1213,8 +1762,9 @@ renderRoute();
 drawMap();
 setToday(); updateZoneUI();
 loadOpsData();
+fcUpdateUI();
 
 </script>
-<div class="pagever" title="Page version 6">v6</div>
+<div class="pagever" title="Page version 7, built 2026-11-14">v7 · 2026-11-14</div>
 </body>
 </html>
