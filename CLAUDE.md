@@ -1,6 +1,6 @@
 # CLAUDE.md – Airlift-AW169Calculator
 
-Read `C:\Users\tom_o\Documents\Repos\CLAUDE.md` (general rules) first. If the two conflict, this file wins. UI language: English.
+Read `C:\Users\tom_o\Documents\Repos\CentralMemories\GENERAL_RULES.md` (general rules; Claude Code loads it through the `Repos\CLAUDE.md` stub) first. If the two conflict, this file wins. UI language: English.
 
 ## What this repo is
 AW169 tools site, deployed on Vercel at `aw169calculator.vercel.app`: `index.html`, `ferry.html` (ferry planner), `limitations.html`, `operations.html`, `performance.html`, `sun-moon.html` (LOOME Norway edition), plus PWA icons and manifest. Static pages, no build step, no backend.
