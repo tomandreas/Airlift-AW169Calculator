@@ -43,6 +43,9 @@ AW169 tools site, deployed on Vercel at `aw169calculator.vercel.app`: `index.htm
 - Planning aid only. No terrain, obstacle, airspace or emergency-landing check. Segments are straight great circles.
 - Known, left as is: `Flight Settings` panel div is not closed in the HTML (also in v6/v7), so the Route panel nests inside it; fixing it would change the layout.
 
+## Design tools (plugins and skills)
+Plugins and skills are managed by Claude under GM-022 (`CentralMemories\GENERAL_RULES.md`, "Plugins and skills"): use one only when the task needs it; this app's design language always wins over a skill's style advice. Fits this repo: `break-ui` for extreme inputs and long results, `mobile-native` for phone use, `frontend-design` for a new page (dark industrial default stays). Never touch the ops-hours bot files whatever a skill suggests.
+
 ## Decisions (do not re-propose)
 - Open-Meteo free API, private non-commercial use, no key and no backend.
 - Model `icon_seamless`; spacing 20 NM; slider 1,000 to 10,000 ft; default 1,000 ft.
