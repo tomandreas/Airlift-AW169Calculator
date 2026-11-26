@@ -1,7 +1,7 @@
 {
- "source": "https://aim-prod.avinor.no/no/OperationalHours/View/Index/84/ops_hrs.html",
- "revised": "AIRAC 29 OCT 2026",
- "fetched": "2026-11-25T11:19:06.788Z",
+ "source": "https://aim-prod.avinor.no/no/OperationalHours/View/Index/85/ops_hrs.html",
+ "revised": "AIRAC 26 NOV 2026",
+ "fetched": "2026-11-26T10:55:41.833Z",
  "fields": {
   "ENAL": {
    "name": "Ålesund/Vigra",
@@ -109,7 +109,7 @@
     "rmk": "HOSP/SAR outside HR OF OPS AVBL O/R 40 MIN prior notice via Polaris ACC Bodø"
    },
    "fuel": {
-    "hr": "AVBL O/R",
+    "hr": "MON - FRI: 0700 - 2130 (0600 - 2030), SAT: NIL, SUN: 1500 - 2130 (1400 - 2030)",
     "rmk": ""
    }
   },
@@ -143,7 +143,7 @@
    },
    "fuel": {
     "hr": "MON - FRI: 0600 - 1500 (0500 - 1400), SAT - SUN: NIL",
-    "rmk": "RMK: EXC holidays"
+    "rmk": "EXC holidays"
    }
   },
   "ENEV": {
@@ -164,7 +164,7 @@
     "rmk": ""
    },
    "fuel": {
-    "hr": "MON - THU: 0510 - 2030 (0410 - 1930), FRI: 0615 - 2030 (0515 - 1930), SAT: 1225 - 1720 (11:25 - 1620), SUN: 0815 - 0835 (0715 - 0735) / 1235 - 2030 (1135 - 1930)",
+    "hr": "MON - THU: 0510 - 2030 (0410 - 1930), FRI: 0615 - 2030 (0515 - 1930), SAT: 1225 - 1720 (1125 - 1620), SUN: 0815 - 0835 (0715 - 0735) / 1235 - 2030 (1135 - 1930)",
     "rmk": ""
    }
   },
@@ -259,7 +259,7 @@
   "ENKR": {
    "name": "Kirkenes/Høybuktmoen",
    "ats": {
-    "hr": "MON - FRI: 0330 - 2315 (0230 - 2215), SAT: 0830 - 1810 (0730 - 1710), SUN: 0900 - 2315 (0800 - 2215)",
+    "hr": "MON - FRI: 0330 - 2315 (0230 - 2215), SAT: 0830 - 1750 (0730 - 1650), SUN: 1030 - 2315 (0930 - 2215)",
     "rmk": ""
    },
    "fuel": {
@@ -314,11 +314,11 @@
   "ENNA": {
    "name": "Lakselv/Banak",
    "ats": {
-    "hr": "MON - FRI: 0520 - 2250 (0420 - 2150), SAT: 1100 - 1530 (1000 - 1430), SUN: 1040 - 2250 (0940 - 2150)",
+    "hr": "MON - FRI: 0510 - 2310 (0410 - 2210), SAT: 0940 - 1300 (0840 - 1200), SUN: 1200 - 2310 (1100 - 2210)",
     "rmk": "AVBL O/R H24 for charterflights"
    },
    "fuel": {
-    "hr": "MON - FRI: 0500 - 2315 (0400 - 2215), SAT: 0830 - 1300 (0730 - 1200), SUN: 1200 - 2315 (1100 - 2215)",
+    "hr": "MON - FRI: 0510 - 2310 (0410 - 2210), SAT: 0940 - 1300 (0840 - 1200), SUN: 1200 - 2310 (1100 - 2210)",
     "rmk": "Outside HR of OPS O/R AFSN (+47) 482 89 103 or Air BP +971 50 453 6032."
    }
   },
@@ -347,12 +347,12 @@
   "ENOL": {
    "name": "Ørland",
    "ats": {
-    "hr": "TWR: H24, APP: MON - FRI: 0800 - 1430 (0700 - 1330), SAT - SUN: NIL",
+    "hr": "TWR: H24. APP: MON - FRI: 0800 - 1430 (0700 - 1330), SAT - SUN: NIL",
     "rmk": "Outside detailed APP HR, APP service provided by TWR"
    },
    "fuel": {
-    "hr": "MON - FRI: 0630 - 1500 (0530 - 1400) EXC holidays, SAT - SUN: NIL",
-    "rmk": "Outside HR of OPS, O/R (+47) 72 51 24 83 / (+47) 458 74 833. For CIV, payment by Air BP card only."
+    "hr": "MON - FRI: 0630 - 1500 (0530 - 1400), SAT - SUN and holidays: Limited AVBL O/R in PPR process",
+    "rmk": "Outside HR of OPS, O/R (+47) 72 51 24 83 / (+47) 45 87 48 33."
    }
   },
   "ENOV": {
@@ -439,7 +439,7 @@
     "rmk": ""
    },
    "fuel": {
-    "hr": "MON - FRI: 0830 - 1645 (0730 - 1545), SAT - SUN: 0830 - 1415 (0730 - 1315)",
+    "hr": "MON: 0830 - 1630 (0730 - 1530), TUE: 0830 - 1430 (0730 - 1330), WED: 0830 - 1530 (0730 - 1430), THU: 0830 - 1430 (0730 - 1330), FRI: 0830 - 1330 (0730 - 1230), SAT: CLOSED, SUN: 0830 - 1400 (0730 - 1300)",
     "rmk": "Excluding 24 and 25 DEC. Extended opening hours can be requested and will cause an additional cost. For requesting arrival- and departure time, contact Nordic Airport Coordination at acn@airportcoordination.com"
    }
   },
@@ -587,5 +587,5 @@
    }
   }
  },
- "changed": "2026-10-29T08:30:06.354Z"
+ "changed": "2026-11-26T10:55:41.833Z"
 }
